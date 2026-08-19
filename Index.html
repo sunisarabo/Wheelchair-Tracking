@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WC Service — HKT</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f0f4f8;--white:#fff;--blue:#1d6fe8;--blue-dk:#1457c0;--blue-lt:#e8f0fe;
+  --green:#16a34a;--green-lt:#dcfce7;--red:#dc2626;--red-lt:#fee2e2;
+  --yellow:#d97706;--yellow-lt:#fef3c7;--gray:#6b7280;--gray-lt:#e5e7eb;
+  --purple:#7c3aed;--purple-lt:#ede9fe;
+  --text:#111827;--text3:#9ca3af;--border:#d1d5db;
+  --sh:0 2px 8px rgba(0,0,0,.08);--sh-lg:0 8px 24px rgba(0,0,0,.12);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+.hdr{background:var(--blue);color:#fff;padding:12px 16px;display:flex;align-items:center;
+  justify-content:space-between;position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 10px rgba(29,111,232,.35)}
+.hdr-title{font-size:17px;font-weight:800}
+.hdr-sub{font-size:11px;opacity:.8;margin-top:1px}
+.clock{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:600;text-align:right}
+.date-txt{font-size:11px;opacity:.75;text-align:right}
+
+.bnav{position:fixed;bottom:0;left:0;right:0;background:#fff;
+  border-top:2px solid var(--gray-lt);display:flex;z-index:100;
+  padding-bottom:env(safe-area-inset-bottom)}
+.bn{flex:1;padding:10px 4px 8px;display:flex;flex-direction:column;align-items:center;
+  gap:2px;cursor:pointer;color:var(--gray);font-size:11px;font-weight:600;
+  border:none;background:none}
+.bn.active{color:var(--blue)}
+.bn .ico{font-size:22px;line-height:1}
+
+.page{display:none;padding:13px 13px 88px}
+.page.active{display:block}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.sbox{background:#fff;border-radius:12px;padding:11px 6px;text-align:center;box-shadow:var(--sh)}
+.snum{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600}
+.stxt{font-size:10px;color:var(--gray);margin-top:2px;font-weight:600}
+.cb{color:var(--blue)}.cg{color:var(--green)}.cy{color:var(--yellow)}.cr{color:var(--red)}
+
+.sec{font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;
+  letter-spacing:1px;margin-bottom:8px;margin-top:14px}
+.sec:first-child{margin-top:0}
+
+/* STEPS */
+.steps{display:flex;align-items:center;background:#fff;border-radius:12px;
+  padding:11px 12px;margin-bottom:14px;box-shadow:var(--sh)}
+.si{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.sd{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:13px;font-weight:800;
+  background:var(--gray-lt);color:var(--gray);transition:all .25s}
+.sd.done{background:var(--green);color:#fff}
+.sd.act{background:var(--blue);color:#fff;box-shadow:0 0 0 3px rgba(29,111,232,.2)}
+.sl-txt{font-size:10px;color:var(--gray);font-weight:600;text-align:center}
+.sline{height:2px;width:18px;background:var(--gray-lt);margin:0 2px 14px;flex-shrink:0}
+.sline.done{background:var(--green)}
+
+.shdr{display:flex;align-items:center;gap:10px;margin-bottom:13px}
+.back-btn{background:#fff;border:2px solid var(--gray-lt);border-radius:10px;
+  padding:7px 11px;font-size:17px;cursor:pointer;line-height:1}
+.shdr-title{font-size:17px;font-weight:800}
+.shdr-sub{font-size:12px;color:var(--gray);margin-top:1px}
+
+/* STAFF */
+.sbox-inp{background:#fff;border:2px solid var(--border);border-radius:12px;
+  padding:12px 14px;font-family:'Sarabun',sans-serif;font-size:16px;
+  width:100%;outline:none;margin-bottom:10px;transition:border .2s}
+.sbox-inp:focus{border-color:var(--blue)}
+.sbox-inp::placeholder{color:var(--text3);font-size:14px}
+
+.staff-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;
+  max-height:52vh;overflow-y:auto;padding-right:2px}
+.sc{background:#fff;border:2px solid var(--gray-lt);border-radius:12px;
+  padding:12px 8px;text-align:center;cursor:pointer;transition:all .15s;box-shadow:var(--sh)}
+.sc:active{transform:scale(0.96)}
+.sc.sel{border-color:var(--blue);background:var(--blue-lt)}
+.s-av{width:40px;height:40px;border-radius:50%;background:var(--gray-lt);
+  display:flex;align-items:center;justify-content:center;font-size:16px;margin:0 auto 7px}
+.sc.sel .s-av{background:var(--blue)}
+.s-nick{font-size:14px;font-weight:700}
+.sc.sel .s-nick{color:var(--blue-dk)}
+.s-id{font-size:10px;color:var(--gray);margin-top:1px}
+.s-trip{font-size:10px;color:var(--green);font-weight:600;margin-top:3px}
+
+/* WC */
+.frow{display:flex;gap:6px;margin-bottom:9px;overflow-x:auto;padding-bottom:3px}
+.fc{padding:5px 11px;border-radius:20px;border:2px solid var(--gray-lt);background:#fff;
+  font-size:12px;font-weight:600;color:var(--gray);cursor:pointer;white-space:nowrap}
+.fc.act{border-color:var(--blue);background:var(--blue-lt);color:var(--blue)}
+
+.wc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.wi{background:#fff;border:2px solid var(--gray-lt);border-radius:10px;
+  padding:9px 4px;text-align:center;cursor:pointer;transition:all .15s;position:relative}
+.wi:active{transform:scale(0.93)}
+.wi.sel{border-color:var(--blue);background:var(--blue-lt)}
+.wi.inuse{border-color:var(--yellow);background:var(--yellow-lt)}
+.wi.overdue{border-color:var(--red);background:var(--red-lt)}
+.w-num{font-size:14px;font-weight:800}
+.wi.inuse .w-num{color:var(--yellow)}
+.wi.overdue .w-num{color:var(--red)}
+.wi.sel .w-num{color:var(--blue-dk)}
+.w-type{font-size:9px;color:var(--gray);margin-top:1px}
+.w-t{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--yellow);margin-top:2px}
+.wi.overdue .w-t{color:var(--red)}
+.w-dot{width:7px;height:7px;border-radius:50%;position:absolute;top:5px;right:5px}
+.wi.available .w-dot{background:#86efac}
+.wi.inuse .w-dot,.wi.overdue .w-dot{background:var(--yellow)}
+.wi.overdue .w-dot{background:var(--red)}
+.wi.sel .w-dot{background:var(--blue)}
+
+/* CONFIRM */
+.cf-card{background:#fff;border-radius:14px;padding:16px;box-shadow:var(--sh-lg);margin-bottom:12px}
+.cf-row{display:flex;justify-content:space-between;align-items:center;
+  padding:8px 0;border-bottom:1px solid var(--gray-lt)}
+.cf-row:last-child{border-bottom:none;padding-bottom:0}
+.cf-lbl{font-size:12px;color:var(--gray);font-weight:600}
+.cf-val{font-size:15px;font-weight:700}
+.cf-val.blue{color:var(--blue)}.cf-val.green{color:var(--green)}
+
+/* FLIGHT / CASE — Live Dropdown */
+.fl-box{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:12px;box-shadow:var(--sh)}
+.fl-label{font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;
+  letter-spacing:.5px;margin-bottom:8px}
+.fl-loading{font-size:12px;color:var(--gray);text-align:center;padding:10px;
+  display:flex;align-items:center;justify-content:center;gap:6px}
+.fl-list{display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto}
+.fl-item{background:var(--bg);border:2px solid var(--gray-lt);border-radius:10px;
+  padding:10px 12px;cursor:pointer;transition:all .15s}
+.fl-item:active{transform:scale(0.98)}
+.fl-item.sel{border-color:var(--blue);background:var(--blue-lt)}
+.fl-item.sel .fl-code{color:var(--blue-dk)}
+.fl-item.done-case{opacity:.45}
+.fl-code{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600}
+.fl-route{font-size:11px;color:var(--gray);margin-top:2px}
+.fl-time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gray)}
+.fl-type-badge{display:inline-flex;align-items:center;padding:1px 7px;border-radius:10px;
+  font-size:10px;font-weight:700;margin-left:6px}
+.dep{background:#dcfce7;color:#16a34a}
+.arr{background:#dbeafe;color:#1d6fe8}
+.qt{background:#fef9c3;color:#d97706}
+.ssr{background:var(--purple-lt);color:var(--purple)}
+.fl-none{font-size:12px;color:var(--text3);cursor:pointer;padding:8px;text-align:center;
+  border:2px dashed var(--gray-lt);border-radius:10px}
+.fl-none:active{background:var(--gray-lt)}
+.fl-search{background:var(--bg);border:2px solid var(--border);border-radius:10px;
+  padding:9px 12px;font-family:'Sarabun',sans-serif;font-size:14px;
+  width:100%;outline:none;margin-bottom:8px;transition:border .2s}
+.fl-search:focus{border-color:var(--blue)}
+
+/* BUTTONS */
+.bbtn{width:100%;padding:15px;border-radius:14px;border:none;
+  font-family:'Sarabun',sans-serif;font-size:17px;font-weight:800;cursor:pointer;
+  transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px;
+  box-shadow:var(--sh-lg)}
+.bbtn:active{transform:scale(0.97)}
+.b-start{background:var(--green);color:#fff}
+.b-stop{background:var(--red);color:#fff}
+.b-new{background:var(--blue);color:#fff}
+.b-cancel{background:var(--gray-lt);color:var(--gray)}
+.obtn{width:100%;padding:12px;border-radius:12px;border:2px solid var(--gray-lt);
+  background:#fff;color:var(--gray);font-family:'Sarabun',sans-serif;font-size:14px;
+  font-weight:600;cursor:pointer;margin-top:8px}
+
+/* ACTIVE CARDS */
+.ac{background:#fff;border-radius:14px;padding:14px;box-shadow:var(--sh);
+  margin-bottom:10px;border-left:5px solid var(--green)}
+.ac.warn{border-left-color:var(--yellow)}
+.ac.urg{border-left-color:var(--red)}
+.ac-top{display:flex;justify-content:space-between;align-items:flex-start}
+.ac-wc{font-size:18px;font-weight:800;color:var(--blue)}
+.ac-meta{font-size:11px;color:var(--gray);margin-top:2px}
+.ac-timer{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--green)}
+.ac.warn .ac-timer{color:var(--yellow)}
+.ac.urg .ac-timer{color:var(--red)}
+.ac-staff-row{display:flex;align-items:center;gap:6px;margin-top:10px;
+  padding-top:10px;border-top:1px solid var(--gray-lt)}
+.ac-av{width:26px;height:26px;border-radius:50%;background:var(--blue-lt);
+  display:flex;align-items:center;justify-content:center;font-size:13px}
+.ac-name{font-size:13px;font-weight:700}
+.ac-since{font-size:11px;color:var(--gray);margin-left:auto}
+
+/* LOG */
+.lc{background:#fff;border-radius:12px;padding:12px 13px;margin-bottom:8px;
+  box-shadow:var(--sh);display:flex;align-items:center;gap:10px}
+.l-wc{font-size:15px;font-weight:800;color:var(--blue);min-width:50px}
+.l-body{flex:1}
+.l-staff{font-size:13px;font-weight:700}
+.l-detail{font-size:11px;color:var(--gray);margin-top:2px}
+.dur{padding:4px 9px;border-radius:8px;font-family:'JetBrains Mono',monospace;
+  font-size:12px;font-weight:600;min-width:50px;text-align:center}
+.dok{background:var(--green-lt);color:var(--green)}
+.dmid{background:var(--yellow-lt);color:var(--yellow)}
+.dlong{background:var(--red-lt);color:var(--red)}
+
+/* EMPTY */
+.empty{background:#fff;border-radius:14px;padding:34px 20px;text-align:center;
+  color:var(--text3);box-shadow:var(--sh)}
+
+/* MODAL */
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:300;align-items:flex-end;justify-content:center}
+.mo.show{display:flex}
+.ms{background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 36px;
+  width:100%;max-width:500px;animation:up .22s ease}
+@keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.m-handle{width:40px;height:4px;border-radius:2px;background:var(--gray-lt);margin:0 auto 16px}
+.m-title{font-size:18px;font-weight:800;margin-bottom:3px}
+.m-sub{font-size:13px;color:var(--gray);margin-bottom:14px}
+.m-info{background:var(--bg);border-radius:12px;padding:13px;margin-bottom:16px}
+.m-row{display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px}
+.m-row:last-child{margin-bottom:0}
+.m-row .ml{color:var(--gray)}.m-row .mv{font-weight:700}
+.m-btns{display:flex;gap:8px}
+.m-btns .bbtn{font-size:14px;padding:13px}
+
+/* SYNC */
+.sync-bar{font-size:11px;font-weight:600;padding:6px 10px;border-radius:8px;
+  margin-bottom:10px;display:flex;align-items:center;gap:5px;justify-content:center}
+.sync-idle{background:#f3f4f6;color:var(--gray)}
+.sync-ok{background:var(--green-lt);color:var(--green)}
+.sync-err{background:var(--red-lt);color:var(--red)}
+.sync-busy{background:var(--blue-lt);color:var(--blue)}
+
+/* TOAST / FLASH */
+#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+  background:#1f2937;color:#fff;padding:10px 18px;border-radius:12px;
+  font-size:13px;font-weight:600;box-shadow:var(--sh-lg);z-index:999;
+  display:none;max-width:92vw;text-align:center;white-space:nowrap}
+#toast.show{display:block}
+#toast.tok{background:var(--green)}
+#toast.terr{background:var(--red)}
+.flash{position:fixed;inset:0;background:rgba(22,163,74,.1);z-index:200;
+  pointer-events:none;opacity:0;transition:opacity .3s}
+.flash.show{opacity:1}
+
+@media(min-width:480px){.wc-grid{grid-template-columns:repeat(5,1fr)}.staff-grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:680px){.wc-grid{grid-template-columns:repeat(7,1fr)}}
+</style>
+</head>
+<body>
+
+<div class="flash" id="flash"></div>
+<div id="toast"></div>
+
+<!-- STOP MODAL -->
+<div class="mo" id="stopMo">
+  <div class="ms">
+    <div class="m-handle"></div>
+    <div class="m-title">🔴 จบการให้บริการ?</div>
+    <div class="m-sub" id="mSub"></div>
+    <div class="m-info" id="mInfo"></div>
+    <div class="m-btns">
+      <button class="bbtn b-cancel" onclick="closeMo()">ยกเลิก</button>
+      <button class="bbtn b-stop" onclick="confirmStop()">จบเลย ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div>
+    <div class="hdr-title">🦽 WC Service HKT</div>
+    <div class="hdr-sub" id="syncLbl">Phuket Airport · Ground Handling</div>
+  </div>
+  <div>
+    <div class="clock" id="clock">--:--</div>
+    <div class="date-txt" id="dateTxt">—</div>
+  </div>
+</div>
+
+<!-- HOME -->
+<div class="page active" id="pg-home">
+  <div class="stats">
+    <div class="sbox"><div class="snum cb">67</div><div class="stxt">ทั้งหมด</div></div>
+    <div class="sbox"><div class="snum cg" id="sF">67</div><div class="stxt">ว่าง</div></div>
+    <div class="sbox"><div class="snum cy" id="sU">0</div><div class="stxt">ใช้งาน</div></div>
+    <div class="sbox"><div class="snum cr" id="sT">0</div><div class="stxt">วันนี้</div></div>
+  </div>
+  <div class="sec">⏱ กำลังให้บริการ</div>
+  <div id="activeBoard"><div class="empty"><div style="font-size:42px;margin-bottom:8px">🏁</div><div style="font-size:14px">ยังไม่มีการให้บริการ</div></div></div>
+  <div style="margin-top:13px">
+    <button class="bbtn b-new" onclick="go(1)">➕ เริ่มให้บริการใหม่</button>
+  </div>
+</div>
+
+<!-- STEP 1 — STAFF -->
+<div class="page" id="pg-s1">
+  <div class="steps">
+    <div class="si"><div class="sd act">1</div><div class="sl-txt">เลือกคน</div></div>
+    <div class="sline"></div>
+    <div class="si"><div class="sd">2</div><div class="sl-txt">เลือก WC</div></div>
+    <div class="sline"></div>
+    <div class="si"><div class="sd">3</div><div class="sl-txt">ยืนยัน</div></div>
+  </div>
+  <div class="shdr">
+    <button class="back-btn" onclick="go(0)">←</button>
+    <div><div class="shdr-title">ขั้นตอนที่ 1</div><div class="shdr-sub">กดชื่อพนักงานที่จะให้บริการ</div></div>
+  </div>
+  <input class="sbox-inp" id="staffQ" placeholder="🔍 ค้นหาชื่อหรือรหัส เช่น สุทิน หรือ 2101..." oninput="renderStaff(this.value)">
+  <div class="staff-grid" id="staffGrid"></div>
+  <button class="obtn" onclick="go(0)">← กลับหน้าหลัก</button>
+</div>
+
+<!-- STEP 2 — WC -->
+<div class="page" id="pg-s2">
+  <div class="steps">
+    <div class="si"><div class="sd done">✓</div><div class="sl-txt">เลือกคน</div></div>
+    <div class="sline done"></div>
+    <div class="si"><div class="sd act">2</div><div class="sl-txt">เลือก WC</div></div>
+    <div class="sline"></div>
+    <div class="si"><div class="sd">3</div><div class="sl-txt">ยืนยัน</div></div>
+  </div>
+  <div class="shdr">
+    <button class="back-btn" onclick="go(1)">←</button>
+    <div><div class="shdr-title">ขั้นตอนที่ 2</div><div class="shdr-sub" id="s2sub">กดคันที่จะใช้งาน</div></div>
+  </div>
+  <div class="frow">
+    <button class="fc act" onclick="setF('all',this)">ทั้งหมด</button>
+    <button class="fc" onclick="setF('ใหญ่',this)">ใหญ่</button>
+    <button class="fc" onclick="setF('เคบิ้น',this)">เคบิ้น</button>
+    <button class="fc" onclick="setF('กลาง',this)">กลาง</button>
+    <button class="fc" onclick="setF('พับขา',this)">พับขา</button>
+    <button class="fc" onclick="setF('Extra',this)">Extra</button>
+    <button class="fc" onclick="setF('free',this)">🟢 ว่าง</button>
+  </div>
+  <input class="sbox-inp" id="wcQ" placeholder="🔍 พิมพ์เลขรถเข็น เช่น 15" inputmode="numeric" oninput="renderWC()">
+  <div class="wc-grid" id="wcGrid"></div>
+  <button class="obtn" onclick="go(1)">← เปลี่ยนพนักงาน</button>
+</div>
+
+<!-- STEP 3 — CONFIRM + CASE + FLIGHT -->
+<div class="page" id="pg-s3">
+  <div class="steps">
+    <div class="si"><div class="sd done">✓</div><div class="sl-txt">เลือกคน</div></div>
+    <div class="sline done"></div>
+    <div class="si"><div class="sd done">✓</div><div class="sl-txt">เลือก WC</div></div>
+    <div class="sline done"></div>
+    <div class="si"><div class="sd act">3</div><div class="sl-txt">ยืนยัน</div></div>
+  </div>
+  <div class="shdr">
+    <button class="back-btn" onclick="go(2)">←</button>
+    <div><div class="shdr-title">ขั้นตอนที่ 3</div><div class="shdr-sub">ตรวจสอบแล้วกดเริ่ม</div></div>
+  </div>
+
+  <div class="cf-card">
+    <div class="cf-row"><span class="cf-lbl">👤 พนักงาน</span><span class="cf-val blue" id="cfS">—</span></div>
+    <div class="cf-row"><span class="cf-lbl">🆔 รหัส</span><span class="cf-val" id="cfID">—</span></div>
+    <div class="cf-row"><span class="cf-lbl">🦽 รถเข็น</span><span class="cf-val blue" id="cfW">—</span></div>
+    <div class="cf-row"><span class="cf-lbl">📋 ประเภท</span><span class="cf-val" id="cfT">—</span></div>
+    <div class="cf-row"><span class="cf-lbl">🕐 เวลา</span><span class="cf-val green" id="cfTm">—</span></div>
+  </div>
+
+  <!-- CASE PICKER (Porter Summary) -->
+  <div class="fl-box">
+    <div class="fl-label">📋 เคส Assign วันนี้ (Porter Summary)</div>
+    <div id="caseContent">
+      <div class="fl-loading">⏳ กำลังโหลดเคส...</div>
+    </div>
+  </div>
+
+  <!-- FLIGHT PICKER -->
+  <div class="fl-box">
+    <div class="fl-label">✈ หรือเลือกเที่ยวบินเอง (ถ้าไม่มีเคส)</div>
+    <div id="flContent">
+      <div class="fl-loading">⏳ กำลังโหลดตารางบิน...</div>
+    </div>
+  </div>
+
+  <button class="bbtn b-start" onclick="startService()">🟢 เริ่มให้บริการ</button>
+  <button class="obtn" onclick="go(2)">← เปลี่ยนรถเข็น</button>
+</div>
+
+<!-- LOG -->
+<div class="page" id="pg-log">
+  <div class="stats">
+    <div class="sbox"><div class="snum cb" id="lTot">0</div><div class="stxt">วันนี้</div></div>
+    <div class="sbox"><div class="snum cg" id="lAvg">—</div><div class="stxt">เฉลี่ย(น.)</div></div>
+    <div class="sbox"><div class="snum cy" id="lMax">—</div><div class="stxt">นานสุด(น.)</div></div>
+    <div class="sbox"><div class="snum cr" id="lOver">0</div><div class="stxt">&gt;60น.</div></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div class="sec" style="margin:0">📋 ประวัติวันนี้</div>
+    <button onclick="exportCSV()" style="background:var(--blue-lt);color:var(--blue);
+      border:none;border-radius:8px;padding:6px 13px;font-family:Sarabun,sans-serif;
+      font-size:12px;font-weight:700;cursor:pointer">⬇ Export</button>
+  </div>
+  <div id="logList"><div class="empty"><div style="font-size:42px;margin-bottom:8px">📭</div><div style="font-size:14px">ยังไม่มีประวัติ</div></div></div>
+</div>
+
+<div class="bnav">
+  <button class="bn active" id="bn0" onclick="showMain('home',this)"><span class="ico">🏠</span>หน้าหลัก</button>
+  <button class="bn" id="bn1" onclick="showMain('log',this)"><span class="ico">📋</span>ประวัติ</button>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// CONFIG — GAS URL (ใส่ URL ของ Deployment ตรงนี้)
+// ══════════════════════════════════════════════════════════
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwe1SAA-tYjfVtyhLjnjsWUMCOCXluWGs_Qwc9k1vnEB4M7FmvWki6XsrIt2qzJn2LG8A/exec';
+
+// ══════════════════════════════════════════════════════════
+// STAFF — 76 คน (Active only)
+// ══════════════════════════════════════════════════════════
+const STAFF=[
+  {id:'1900266',name:'ปรีชา วงค์เรืองเดช',nick:'ปรีชา'},
+  {id:'2101042',name:'สุทิน ครองรั้ว',nick:'สุทิน'},
+  {id:'2101044',name:'มะดือเระ นอรี',nick:'มะดือเระ'},
+  {id:'2101045',name:'วุฒิชัย คงสมุทร',nick:'วุฒิชัย ค.'},
+  {id:'2101286',name:'อมัน กาญจนา',nick:'อมัน'},
+  {id:'2101305',name:'สุวรรณ แตงโม',nick:'สุวรรณ'},
+  {id:'2101306',name:'จตุพล ศรีวิลัย',nick:'จตุพล'},
+  {id:'2101314',name:'วรวุฒิ ดำโข',nick:'วรวุฒิ'},
+  {id:'2101400',name:'วุฒิชัย สาระบัน',nick:'วุฒิชัย ส.'},
+  {id:'2101401',name:'ต่วนการีม ดอเล๊าะ',nick:'ต่วนการีม'},
+  {id:'2201447',name:'เอกชัย กะเตบจิต',nick:'เอกชัย'},
+  {id:'2201448',name:'ณัฐพงศ์ พาที',nick:'ณัฐพงศ์'},
+  {id:'2201452',name:'อัสมี จิใจ',nick:'อัสมี'},
+  {id:'2201528',name:'เริงฤทธิ์ นาวงษ์',nick:'เริงฤทธิ์'},
+  {id:'2201837',name:'อดิศร หอมหวล',nick:'อดิศร'},
+  {id:'2201923',name:'ดือรอแม นอรี',nick:'ดือรอแม'},
+  {id:'2201924',name:'มูฮัมดี ดอเลาะ',nick:'มูฮัมดี'},
+  {id:'2201932',name:'อามีน หะยีมามะ',nick:'อามีน'},
+  {id:'2201956',name:'อธิปพงษ์ สงวนไถ',nick:'อธิปพงษ์'},
+  {id:'2202009',name:'รัชพล คลายสุวรรณ',nick:'รัชพล'},
+  {id:'2202113',name:'ปิยะวัฒน์ พาที',nick:'ปิยะวัฒน์'},
+  {id:'2202114',name:'อรรถกร กาละเหลา',nick:'อรรถกร'},
+  {id:'2202282',name:'อรรถชัย แก้วอินทิน',nick:'อรรถชัย'},
+  {id:'2302546',name:'สุธา อุตสาหะ',nick:'สุธา'},
+  {id:'2302548',name:'วรุฒ จิตบุญ',nick:'วรุฒ'},
+  {id:'2302549',name:'อับดุลซาเฮด มะแอ',nick:'อับดุลซาเฮด'},
+  {id:'2302859',name:'เพิ่มพล จินดาพล',nick:'เพิ่มพล'},
+  {id:'2303228',name:'อาบูคอรี ดาโอะ',nick:'อาบูคอรี'},
+  {id:'2303229',name:'ซิดดิก ดาราซอ',nick:'ซิดดิก'},
+  {id:'2304547',name:'ธนาธิษณ์ ปานช้าง',nick:'ธนาธิษณ์'},
+  {id:'2304628',name:'ฉัตรชัย ฤทธิปู่',nick:'ฉัตรชัย'},
+  {id:'2304684',name:'สิทธิชัย ตุลา',nick:'สิทธิชัย'},
+  {id:'2304687',name:'อัสลัน บันสุรี',nick:'อัสลัน'},
+  {id:'2304830',name:'นวพล เพ็ชรนาค',nick:'นวพล'},
+  {id:'2404853',name:'กฤษณ ปราบเสร็จ',nick:'กฤษณ'},
+  {id:'2404854',name:'อารีซัน ดอเลาะ',nick:'อารีซัน'},
+  {id:'2404880',name:'ทศพล สุพรรณพงศ์',nick:'ทศพล'},
+  {id:'2404881',name:'ชวัลวิทย์ นันทพงษ์',nick:'ชวัลวิทย์'},
+  {id:'2404911',name:'อิรฟาน เจะแม',nick:'อิรฟาน'},
+  {id:'2404912',name:'อาลีย๊ะ อาหลีกอย',nick:'อาลีย๊ะ'},
+  {id:'2405006',name:'ซูวัรดี หะมะ',nick:'ซูวัรดี'},
+  {id:'2405007',name:'เตาฟิ อาลี',nick:'เตาฟิ'},
+  {id:'2405009',name:'ธีรพงศ์ ขุนเมือง',nick:'ธีรพงศ์'},
+  {id:'2405010',name:'กิตติพัฒน์ คุ่ยหนู',nick:'กิตติพัฒน์'},
+  {id:'2405074',name:'รัชชานนท์ งอกผล',nick:'รัชชานนท์'},
+  {id:'2405118',name:'ศราวุธ ชูภักดิ์',nick:'ศราวุธ'},
+  {id:'2405120',name:'ไพศาล ผลแก้ว',nick:'ไพศาล'},
+  {id:'2405121',name:'อาหะมะซาดี นาแว',nick:'อาหะมะซาดี'},
+  {id:'2405163',name:'ณัฐพล แสนวัง',nick:'ณัฐพล'},
+  {id:'2405164',name:'กีรติ อันหนองกุง',nick:'กีรติ'},
+  {id:'2405697',name:'ศตคุณ สุขสมศรี',nick:'ศตคุณ'},
+  {id:'2406034',name:'อุสมาน เจะหะ',nick:'อุสมาน'},
+  {id:'2506223',name:'นัฐกานต์ หลงรักษ์',nick:'นัฐกานต์'},
+  {id:'2506224',name:'ภูวนัยน์ สังข์ชุม',nick:'ภูวนัยน์'},
+  {id:'2506806',name:'ฮาฟีซี อาแด',nick:'ฮาฟีซี'},
+  {id:'2506807',name:'พีรพัฒน์ แก้วแดง',nick:'พีรพัฒน์'},
+  {id:'2506812',name:'มุสตากิม มีหิ',nick:'มุสตากิม'},
+  {id:'2506813',name:'ธีระศักดิ์ ชูวงศ์',nick:'ธีระศักดิ์'},
+  {id:'2506814',name:'อดุลศักดิ์ สีมาลย์',nick:'อดุลศักดิ์'},
+  {id:'2506815',name:'ธีรศักดิ์ ฤทธิ์โต',nick:'ธีรศักดิ์'},
+  {id:'2506817',name:'พงศธร รัตนลีลาศ',nick:'พงศธร'},
+  {id:'2506819',name:'อาดีลัน ดามาลอ',nick:'อาดีลัน'},
+  {id:'2506820',name:'วรัญญู กิ้มแก้ว',nick:'วรัญญู'},
+  {id:'2506822',name:'สุไลมาน สาหลำหมะ',nick:'สุไลมาน'},
+  {id:'2506824',name:'ธนาวุฒิ หอมหวล',nick:'ธนาวุฒิ'},
+  {id:'2506831',name:'ณัฐวุฒิ กตัญญู',nick:'ณัฐวุฒิ'},
+  {id:'2506833',name:'มะลีกี มูซอ',nick:'มะลีกี'},
+  {id:'2506836',name:'อีลียาส อาแว',nick:'อีลียาส'},
+  {id:'2506843',name:'เฉลิมเกียรติ รอดมณี',nick:'เฉลิมเกียรติ'},
+  {id:'2506844',name:'ปิยะทัศน์ หัวแหลม',nick:'ปิยะทัศน์'},
+  {id:'2506845',name:'ราเชน หนูหนุด',nick:'ราเชน'},
+  {id:'2506846',name:'ศุภกร สมนึก',nick:'ศุภกร'},
+  {id:'2506849',name:'จารุกิตติ์ เจริญฤทธิ์',nick:'จารุกิตติ์'},
+  {id:'2506850',name:'จีรวัฒน์ จารจิต',nick:'จีรวัฒน์'},
+  {id:'2506860',name:'ฟาอิส ซาเม๊าะ',nick:'ฟาอิส'},
+  {id:'2506861',name:'จตุพงศ์ ปรีดาผล',nick:'จตุพงศ์'},
+];
+
+// ══════════════════════════════════════════════════════════
+// WC MASTER — 67 คัน
+// ══════════════════════════════════════════════════════════
+const WC=[
+  {no:'WH-1',ctrl:'AOTGA-WH-1',type:'ใหญ่'},{no:'WH-2',ctrl:'AOTGA-WH-2',type:'ใหญ่'},
+  {no:'WH-3',ctrl:'AOTGA-WH-3',type:'ใหญ่'},{no:'WH-4',ctrl:'AOTGA-WH-4',type:'ใหญ่'},
+  {no:'WH-5',ctrl:'AOTGA-WH-5',type:'ใหญ่'},{no:'WH-6',ctrl:'AOTGA-WH-6',type:'เคบิ้น'},
+  {no:'WH-7',ctrl:'AOTGA-WH-7',type:'เคบิ้น'},{no:'WH-8',ctrl:'AOTGA-WH-8',type:'เคบิ้น'},
+  {no:'WH-9',ctrl:'AOTGA-WH-9',type:'ใหญ่'},{no:'WH-10',ctrl:'AOTGA-WH-10',type:'ใหญ่'},
+  {no:'WH-11',ctrl:'AOTGA-WH-11',type:'ใหญ่'},{no:'WH-12',ctrl:'AOTGA-WH-12',type:'ใหญ่'},
+  {no:'WH-13',ctrl:'AOTGA-WH-13',type:'ใหญ่'},{no:'WH-14',ctrl:'AOTGA-WH-14',type:'ใหญ่'},
+  {no:'WH-15',ctrl:'AOTGA-WH-15',type:'ใหญ่'},{no:'WH-16',ctrl:'AOTGA-WH-16',type:'ใหญ่'},
+  {no:'WH-17',ctrl:'AOTGA-WH-17',type:'ใหญ่'},{no:'WH-18',ctrl:'AOTGA-WH-18',type:'ใหญ่'},
+  {no:'WH-19',ctrl:'AOTGA-WH-19',type:'ใหญ่'},{no:'WH-20',ctrl:'AOTGA-WH-20',type:'ใหญ่'},
+  {no:'WH-21',ctrl:'AOTGA-WH-21',type:'ใหญ่'},{no:'WH-22',ctrl:'AOTGA-WH-22',type:'ใหญ่'},
+  {no:'WH-23',ctrl:'AOTGA-WH-23',type:'ใหญ่'},{no:'WH-24',ctrl:'AOTGA-WH-24',type:'ใหญ่'},
+  {no:'WH-25',ctrl:'AOTGA-WH-25',type:'ใหญ่'},{no:'WH-26',ctrl:'AOTGA-WH-26',type:'ใหญ่'},
+  {no:'WH-27',ctrl:'AOTGA-WH-27',type:'กลาง'},{no:'WH-28',ctrl:'AOTGA-WH-28',type:'กลาง'},
+  {no:'WH-29',ctrl:'AOTGA-WH-29',type:'ใหญ่'},{no:'WH-30',ctrl:'AOTGA-WH-30',type:'กลาง'},
+  {no:'WH-31',ctrl:'AOTGA-WH-31',type:'เคบิ้น'},{no:'WH-32',ctrl:'AOTGA-WH-32',type:'เคบิ้น'},
+  {no:'WH-33',ctrl:'AOTGA-WH-33',type:'กลาง'},{no:'WH-34',ctrl:'AOTGA-WH-34',type:'กลาง'},
+  {no:'WH-35',ctrl:'AOTGA-WH-35',type:'ใหญ่'},{no:'WH-36',ctrl:'AOTGA-WH-36',type:'ใหญ่'},
+  {no:'WH-37',ctrl:'AOTGA-WH-37',type:'ใหญ่'},{no:'WH-38',ctrl:'AOTGA-WH-38',type:'เคบิ้น'},
+  {no:'WH-39',ctrl:'AOTGA-WH-39',type:'ใหญ่'},{no:'WH-40',ctrl:'AOTGA-WH-40',type:'ใหญ่'},
+  {no:'WH-41',ctrl:'AOTGA-WH-41',type:'ใหญ่'},{no:'WH-42',ctrl:'AOTGA-WH-42',type:'ใหญ่'},
+  {no:'WH-43',ctrl:'AOTGA-WH-43',type:'ใหญ่'},{no:'WH-44',ctrl:'AOTGA-WH-44',type:'ใหญ่'},
+  {no:'WH-45',ctrl:'AOTGA-WH-45',type:'ใหญ่'},{no:'WH-46',ctrl:'AOTGA-WH-46',type:'ใหญ่'},
+  {no:'WH-47',ctrl:'AOTGA-WH-47',type:'ใหญ่'},{no:'WH-48',ctrl:'AOTGA-WH-48',type:'ใหญ่'},
+  {no:'WH-49',ctrl:'AOTGA-WH-49',type:'ใหญ่'},{no:'WH-50',ctrl:'AOTGA-WH-50',type:'กลาง'},
+  {no:'WH-51',ctrl:'AOTGA-WH-51',type:'กลาง'},{no:'WH-52',ctrl:'AOTGA-WH-52',type:'เคบิ้น'},
+  {no:'WH-53',ctrl:'AOTGA-WH-53',type:'เคบิ้น'},{no:'WH-54',ctrl:'AOTGA-WH-54',type:'เคบิ้น'},
+  {no:'WH-55',ctrl:'AOTGA-WH-55',type:'เคบิ้น'},{no:'WH-56',ctrl:'AOTGA-WH-56',type:'พับขา'},
+  {no:'WH-57',ctrl:'AOTGA-WH-57',type:'พับขา'},{no:'WH-58',ctrl:'AOTGA-WH-58',type:'พับขา'},
+  {no:'WH-59',ctrl:'AOTGA-WH-59',type:'Extra'},{no:'WH-60',ctrl:'AOTGA-WH-60',type:'พับขา'},
+  {no:'WH-61',ctrl:'AOTGA-WH-61',type:'Extra'},{no:'WH-62',ctrl:'AOTGA-WH-62',type:'ใหญ่'},
+  {no:'WH-63',ctrl:'AOTGA-WH-63',type:'ใหญ่'},{no:'WH-64',ctrl:'AOTGA-WH-64',type:'ใหญ่'},
+  {no:'WH-65',ctrl:'AOTGA-WH-65',type:'ใหญ่'},{no:'WH-66',ctrl:'AOTGA-WH-66',type:'ใหญ่'},
+  {no:'WH-67',ctrl:'AOTGA-WH-67',type:'ใหญ่'},
+];
+
+// ══════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════
+let selS=null, selW=null, selFlight=null, selCase=null;
+let trips={}, log=[], cnt=1, stopCtrl=null, wcF='all';
+let flightCache=null;         // cache flight list
+let caseCache=null, caseCacheAt=0;  // cache case list (refresh ทุก 60 วิ)
+const CASE_TTL=60000;
+
+// ══════════════════════════════════════════════════════════
+// CLOCK
+// ══════════════════════════════════════════════════════════
+function tick(){
+  const n=new Date();
+  document.getElementById('clock').textContent=n.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('dateTxt').textContent=n.toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'short'});
+}
+setInterval(tick,1000);tick();
+
+// ══════════════════════════════════════════════════════════
+// NAV
+// ══════════════════════════════════════════════════════════
+function showMain(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pg-'+id).classList.add('active');
+  document.querySelectorAll('.bn').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  if(id==='log')renderLog();
+  if(id==='home')renderBoard();
+}
+function go(s){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.bn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('bn0').classList.add('active');
+  const pages=['pg-home','pg-s1','pg-s2','pg-s3'];
+  document.getElementById(pages[s]).classList.add('active');
+  if(s===0){renderBoard();}
+  else if(s===1){renderStaff('');document.getElementById('staffQ').value='';}
+  else if(s===2){
+    if(!selS){toast('เลือกพนักงานก่อนนะ','terr');go(1);return;}
+    document.getElementById('s2sub').textContent=selS.nick+' — กดคันที่จะใช้';
+    document.getElementById('wcQ').value='';renderWC();
+  }
+  else if(s===3){
+    if(!selW){toast('เลือกรถเข็นก่อนนะ','terr');go(2);return;}
+    document.getElementById('cfS').textContent=selS.nick;
+    document.getElementById('cfID').textContent=selS.id;
+    document.getElementById('cfW').textContent=selW.ctrl;
+    document.getElementById('cfT').textContent=selW.type;
+    selFlight=null;selCase=null;
+    clearInterval(window._ct);
+    const upT=()=>{const el=document.getElementById('cfTm');if(el)el.textContent=new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});};
+    upT();window._ct=setInterval(upT,1000);
+    loadCases();
+    loadFlights();
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// STAFF GRID
+// ══════════════════════════════════════════════════════════
+function renderStaff(q){
+  q=(q||'').toLowerCase();
+  let list=q?STAFF.filter(s=>s.name.includes(q)||s.id.includes(q)||s.nick.includes(q)):STAFF;
+  const g=document.getElementById('staffGrid');
+  if(!list.length){g.innerHTML='<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--text3)">ไม่พบพนักงาน</div>';return;}
+  g.innerHTML=list.map(s=>{
+    const c=log.filter(t=>t.sid===s.id).length+Object.values(trips).filter(t=>t.sid===s.id).length;
+    const sel=selS&&selS.id===s.id;
+    return `<div class="sc ${sel?'sel':''}" onclick="pickS('${s.id}')">
+      <div class="s-av">👷</div>
+      <div class="s-nick">${s.nick}</div>
+      <div class="s-id">${s.id}</div>
+      ${c?`<div class="s-trip">วันนี้ ${c} trip</div>`:''}
+    </div>`;
+  }).join('');
+}
+function pickS(id){selS=STAFF.find(s=>s.id===id);renderStaff(document.getElementById('staffQ').value);setTimeout(()=>go(2),180);}
+
+// ══════════════════════════════════════════════════════════
+// WC GRID
+// ══════════════════════════════════════════════════════════
+function renderWC(){
+  const q=(document.getElementById('wcQ').value||'').replace(/\D/g,'');
+  let list=WC;
+  if(wcF!=='all'&&wcF!=='free')list=list.filter(w=>w.type===wcF);
+  if(wcF==='free')list=list.filter(w=>!trips[w.ctrl]);
+  if(q)list=list.filter(w=>w.no.replace('WH-','').startsWith(q));
+  const g=document.getElementById('wcGrid');
+  if(!list.length){g.innerHTML='<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--text3)">ไม่พบ</div>';return;}
+  g.innerHTML=list.map(w=>{
+    const t=trips[w.ctrl];
+    const el=t?Math.floor((Date.now()-t.startMs)/60000):null;
+    const state=t?(el>60?'overdue':'inuse'):'available';
+    const sel=selW&&selW.ctrl===w.ctrl;
+    return `<div class="wi ${state} ${sel?'sel':''}" onclick="pickW('${w.ctrl}')">
+      <div class="w-dot"></div>
+      <div class="w-num">${w.no.replace('WH-','')}</div>
+      <div class="w-type">${stype(w.type)}</div>
+      ${t?`<div class="w-t">${el}น.</div>`:''}
+    </div>`;
+  }).join('');
+}
+function stype(t){return{ใหญ่:'ใหญ่',เคบิ้น:'เคบิ้น',กลาง:'กลาง',พับขา:'พับขา',Extra:'EXTRA'}[t]||t;}
+function setF(f,el){wcF=f;document.querySelectorAll('.fc').forEach(c=>c.classList.remove('act'));el.classList.add('act');renderWC();}
+function pickW(ctrl){if(trips[ctrl]){openStop(ctrl);return;}selW=WC.find(w=>w.ctrl===ctrl);renderWC();setTimeout(()=>go(3),180);}
+
+// ══════════════════════════════════════════════════════════
+// CASE LOADER — ดึงเคส assign จาก Porter Summary ผ่าน GAS
+// ══════════════════════════════════════════════════════════
+let todayCases=[];
+async function loadCases(){
+  const el=document.getElementById('caseContent');
+  el.innerHTML='<div class="fl-loading">⏳ กำลังโหลดเคสวันนี้...</div>';
+
+  if(caseCache && (Date.now()-caseCacheAt)<CASE_TTL){renderCaseList(caseCache);return;}
+
+  try{
+    const r=await fetch(GAS_URL+'?action=cases',{method:'GET'});
+    const data=await r.json();
+    if(data.ok && data.cases){
+      caseCache=data.cases;caseCacheAt=Date.now();
+      renderCaseList(data.cases);
+    } else {
+      el.innerHTML='<div class="fl-none" onclick="skipCase()">ไม่พบเคส assign วันนี้ / ข้าม →</div>';
+    }
+  }catch(e){
+    el.innerHTML='<div class="fl-none" onclick="skipCase()">โหลดเคสไม่ได้ / ข้าม →</div>';
+    console.warn('Case load error:',e);
+  }
+}
+
+function renderCaseList(cases){
+  const el=document.getElementById('caseContent');
+  todayCases=cases||[];
+  // เอาเคสที่ยังไม่ส่งขึ้นก่อน, เคสที่จบแล้วไปท้ายรายการ
+  const open=todayCases.filter(c=>!c.delivered);
+  const done=todayCases.filter(c=>c.delivered);
+  if(!todayCases.length){
+    el.innerHTML='<div class="fl-none" onclick="skipCase()">ยังไม่มีเคส assign วันนี้ / ข้าม →</div>';
+    return;
+  }
+
+  let html=`<input class="fl-search" id="caseSearch" placeholder="🔍 ค้นหา เช่น EK, 379, Worawut..." oninput="filterCase(this.value)">
+  <div class="fl-list" id="caseList">`;
+
+  html+=[...open,...done].map(c=>{
+    const i=todayCases.indexOf(c);
+    const dirCls={DEP:'dep',ARR:'arr'}[c.dir]||'qt';
+    const dirLabel={DEP:'⬆ DEP',ARR:'⬇ ARR'}[c.dir]||'—';
+    const time=c.dir==='DEP'?(c.etd?'ETD '+c.etd:''):(c.eta?'ETA '+c.eta:'');
+    return `<div class="fl-item ${c.delivered?'done-case':''}" data-cidx="${i}"
+      data-search="${(c.flight+' '+c.airline+' '+c.fltno+' '+c.porter+' '+c.svc).toLowerCase()}"
+      onclick="pickCase(${i})">
+      <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+        <span class="fl-code">#${c.no} ${c.flight}</span>
+        ${c.svc?`<span class="fl-type-badge ssr">${c.svc}</span>`:''}
+        <span class="fl-type-badge ${dirCls}">${dirLabel}</span>
+        ${c.delivered?'<span class="fl-type-badge" style="background:var(--gray-lt);color:var(--gray)">✓ ส่งแล้ว</span>':''}
+      </div>
+      <div class="fl-route">👷 ${c.porter||'—'}${c.gate?' · Gate '+c.gate:''}</div>
+      <div class="fl-time">${time}${c.notified?' · แจ้งเคส '+c.notified:''}</div>
+    </div>`;
+  }).join('');
+
+  html+=`</div><div class="fl-none" style="margin-top:8px" onclick="skipCase()">ไม่ลิงก์เคส / ข้าม →</div>`;
+  el.innerHTML=html;
+}
+
+function filterCase(q){
+  q=q.toLowerCase();
+  document.querySelectorAll('#caseList .fl-item').forEach(el=>{
+    el.style.display=(el.dataset.search.includes(q))?'':'none';
+  });
+}
+
+function pickCase(i){
+  const c=todayCases[i];
+  if(!c)return;
+  if(c.delivered){toast('เคสนี้ส่งแล้ว ✓','terr');return;}
+  selCase=c;
+  // auto-fill flight จากเคส (เคลียร์ flight ที่เลือกเองไว้)
+  selFlight={code:c.flight,airline:c.airline,fltno:c.fltno,routing:'',sta:c.eta||'',std:c.etd||'',type:c.dir||''};
+  document.querySelectorAll('#caseList .fl-item').forEach(el=>{
+    el.classList.toggle('sel',Number(el.dataset.cidx)===i);
+  });
+  document.querySelectorAll('#flList .fl-item').forEach(el=>el.classList.remove('sel'));
+  toast('📋 เคส #'+c.no+' · '+c.flight+(c.svc?' · '+c.svc:''),'tok');
+}
+
+function skipCase(){
+  selCase=null;
+  document.querySelectorAll('#caseList .fl-item').forEach(el=>el.classList.remove('sel'));
+  toast('ไม่ลิงก์เคส','');
+}
+
+// ══════════════════════════════════════════════════════════
+// FLIGHT LOADER — ดึงจาก GAS
+// ══════════════════════════════════════════════════════════
+async function loadFlights(){
+  const el=document.getElementById('flContent');
+  el.innerHTML='<div class="fl-loading">⏳ กำลังโหลดตารางบินวันนี้...</div>';
+
+  if(flightCache){renderFlightList(flightCache);return;}
+
+  try{
+    const r=await fetch(GAS_URL+'?action=flights',{method:'GET'});
+    const data=await r.json();
+    if(data.ok && data.flights){
+      flightCache=data.flights;
+      renderFlightList(data.flights);
+    } else {
+      showFlightError('ไม่พบข้อมูลเที่ยวบิน');
+    }
+  }catch(e){
+    showFlightError('โหลดไม่ได้ — ตรวจสอบการเชื่อมต่อ');
+    console.warn('Flight load error:',e);
+  }
+}
+
+function renderFlightList(flights){
+  const el=document.getElementById('flContent');
+  if(!flights||!flights.length){
+    el.innerHTML='<div class="fl-none" onclick="skipFlight()">ไม่มีตารางบิน / ข้ามขั้นตอนนี้ →</div>';
+    return;
+  }
+
+  let html=`<input class="fl-search" id="flSearch" placeholder="🔍 ค้นหา เช่น PG, SQ, 270..." oninput="filterFlight(this.value)">
+  <div class="fl-list" id="flList">`;
+
+  html+=flights.map(f=>{
+    const typeCls={DEP:'dep',ARR:'arr',QT:'qt'}[f.type]||'qt';
+    const typeLabel={DEP:'⬆ DEP',ARR:'⬇ ARR',QT:'⇄ QT'}[f.type]||f.type;
+    const time=f.type==='DEP'?('STD '+f.std):('STA '+f.sta);
+    return `<div class="fl-item" data-code="${f.code}" data-search="${(f.code+f.airline+f.fltno+f.routing).toLowerCase()}"
+      onclick="pickFlight(${JSON.stringify(f).replace(/"/g,'&quot;')})">
+      <div style="display:flex;align-items:center;gap:4px">
+        <span class="fl-code">${f.code}</span>
+        <span class="fl-type-badge ${typeCls}">${typeLabel}</span>
+      </div>
+      <div class="fl-route">${f.routing}</div>
+      <div class="fl-time">${time}</div>
+    </div>`;
+  }).join('');
+
+  html+=`</div><div class="fl-none" style="margin-top:8px" onclick="skipFlight()">ไม่มีเที่ยวบิน / ข้าม →</div>`;
+  el.innerHTML=html;
+}
+
+function filterFlight(q){
+  q=q.toLowerCase();
+  document.querySelectorAll('#flList .fl-item').forEach(el=>{
+    el.style.display=(el.dataset.search.includes(q))?'':'none';
+  });
+}
+
+function pickFlight(f){
+  selFlight=f;
+  // เลือกไฟลท์เอง = ยกเลิกลิงก์เคส
+  selCase=null;
+  document.querySelectorAll('#caseList .fl-item').forEach(el=>el.classList.remove('sel'));
+  document.querySelectorAll('#flList .fl-item').forEach(el=>{
+    el.classList.toggle('sel',el.dataset.code===f.code);
+  });
+  toast('✈ เลือก '+f.code,'tok');
+}
+
+function skipFlight(){selFlight=null;selCase=null;document.querySelectorAll('.fl-item').forEach(el=>el.classList.remove('sel'));toast('ข้าม Flight แล้ว','');}
+
+function showFlightError(msg){
+  document.getElementById('flContent').innerHTML=
+    `<div style="font-size:12px;color:var(--red);text-align:center;padding:10px">${msg}</div>
+     <div class="fl-none" style="margin-top:8px" onclick="skipFlight()">ข้ามขั้นตอนนี้ →</div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+// START / STOP SERVICE
+// ══════════════════════════════════════════════════════════
+function startService(){
+  if(!selS||!selW)return;
+  clearInterval(window._ct);
+  const ctrl=selW.ctrl;
+  if(trips[ctrl]){toast('รถเข็นนี้ถูกใช้งานอยู่','terr');return;}
+  const now=new Date();
+  const trip={
+    id:'TRP-'+now.toISOString().slice(0,10).replace(/-/g,'')+'-'+String(cnt++).padStart(3,'0'),
+    ctrl,no:selW.no,type:selW.type,
+    sid:selS.id,snick:selS.nick,sname:selS.name,
+    flight:   selFlight?selFlight.code:'',
+    flAirline:selFlight?selFlight.airline:'',
+    flRouting:selFlight?selFlight.routing:'',
+    flSTA:    selFlight?selFlight.sta:'',
+    flSTD:    selFlight?selFlight.std:'',
+    caseRow:    selCase?selCase.row:'',
+    caseNo:     selCase?selCase.no:'',
+    caseSvc:    selCase?selCase.svc:'',
+    casePorter: selCase?selCase.porter:'',
+    caseAirline:selCase?selCase.airline:'',
+    caseFltno:  selCase?selCase.fltno:'',
+    startMs:now.getTime(),
+    startTime:now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),
+    status:'active'
+  };
+  trips[ctrl]=trip;
+  sync('start',trip);
+  flash();toast('🟢 '+selS.nick+' · '+ctrl+(trip.flight?' ✈'+trip.flight:'')+(trip.caseNo?' 📋#'+trip.caseNo:''),'tok');
+  selS=null;selW=null;selFlight=null;selCase=null;
+  caseCache=null; // ให้โหลดเคสใหม่รอบหน้า (สถานะรับเคสเปลี่ยนแล้ว)
+  updateStats();go(0);
+}
+
+function openStop(ctrl){
+  stopCtrl=ctrl;
+  const t=trips[ctrl];if(!t)return;
+  const el=Math.floor((Date.now()-t.startMs)/60000);
+  document.getElementById('mSub').textContent='จบ trip ของ '+t.snick+'?';
+  document.getElementById('mInfo').innerHTML=`
+    <div class="m-row"><span class="ml">🦽 รถเข็น</span><span class="mv" style="color:var(--blue)">${t.ctrl}</span></div>
+    <div class="m-row"><span class="ml">👤 พนักงาน</span><span class="mv">${t.snick} (${t.sid})</span></div>
+    ${t.flight?`<div class="m-row"><span class="ml">✈ เที่ยวบิน</span><span class="mv">${t.flight} ${t.flRouting?'· '+t.flRouting:''}</span></div>`:''}
+    ${t.caseNo?`<div class="m-row"><span class="ml">📋 เคส</span><span class="mv">#${t.caseNo}${t.caseSvc?' · '+t.caseSvc:''}</span></div>`:''}
+    <div class="m-row"><span class="ml">⏱ เริ่มเมื่อ</span><span class="mv">${t.startTime}</span></div>
+    <div class="m-row"><span class="ml">⏳ ผ่านมา</span>
+      <span class="mv" style="color:${el>60?'var(--red)':el>30?'var(--yellow)':'var(--green)'}">${el} นาที</span></div>`;
+  document.getElementById('stopMo').classList.add('show');
+}
+function closeMo(){document.getElementById('stopMo').classList.remove('show');stopCtrl=null;}
+function confirmStop(){
+  if(!stopCtrl)return;
+  const t=trips[stopCtrl];if(!t){closeMo();return;}
+  const now=new Date();
+  t.endTime=now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  t.duration=((now-t.startMs)/60000).toFixed(1);
+  t.status='done';
+  log.unshift({...t});
+  delete trips[stopCtrl];
+  sync('end',t);closeMo();
+  caseCache=null; // สถานะส่งเคสเปลี่ยน
+  flash();toast('🔴 จบแล้ว · '+t.snick+' · '+t.duration+' น.','tok');
+  updateStats();renderBoard();
+}
+
+// ══════════════════════════════════════════════════════════
+// ACTIVE BOARD
+// ══════════════════════════════════════════════════════════
+function renderBoard(){
+  const list=Object.values(trips).sort((a,b)=>a.startMs-b.startMs);
+  const el=document.getElementById('activeBoard');
+  if(!list.length){el.innerHTML='<div class="empty"><div style="font-size:42px;margin-bottom:8px">🏁</div><div style="font-size:14px">ยังไม่มีการให้บริการ</div></div>';return;}
+  el.innerHTML=list.map(t=>{
+    const min=Math.floor((Date.now()-t.startMs)/60000);
+    const urg=min>60?'urg':min>40?'warn':'';
+    return `<div class="ac ${urg}">
+      <div class="ac-top">
+        <div>
+          <div class="ac-wc">${t.ctrl}</div>
+          <div class="ac-meta">${t.type}${t.flight?' · ✈ '+t.flight+(t.flRouting?' '+t.flRouting:''):''}${t.caseNo?' · 📋#'+t.caseNo+(t.caseSvc?' '+t.caseSvc:''):''}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="ac-timer" id="at-${t.ctrl}">${fmt(Date.now()-t.startMs)}</div>
+          ${min>60?'<div style="font-size:10px;color:var(--red);font-weight:700">⚠ เกินเวลา!</div>':''}
+        </div>
+      </div>
+      <div class="ac-staff-row">
+        <div class="ac-av">👷</div>
+        <div class="ac-name">${t.snick}<span style="font-size:10px;color:var(--gray);font-weight:400"> · ${t.sid}</span></div>
+        <div class="ac-since">เริ่ม ${t.startTime}</div>
+      </div>
+      <div style="margin-top:10px">
+        <button class="bbtn b-stop" style="font-size:14px;padding:11px" onclick="openStop('${t.ctrl}')">🔴 จบการให้บริการ</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function fmt(ms){const s=Math.floor(ms/1000),m=Math.floor(s/60),h=Math.floor(m/60);return h>0?h+'ช '+(m%60)+'น':m+'น '+(s%60)+'ว';}
+setInterval(()=>{
+  if(!document.getElementById('pg-home').classList.contains('active'))return;
+  Object.values(trips).forEach(t=>{const el=document.getElementById('at-'+t.ctrl);if(el)el.textContent=fmt(Date.now()-t.startMs);});
+  updateStats();
+},1000);
+
+// ══════════════════════════════════════════════════════════
+// LOG
+// ══════════════════════════════════════════════════════════
+function renderLog(){
+  const done=log.filter(t=>t.status==='done');
+  document.getElementById('lTot').textContent=done.length+Object.keys(trips).length;
+  if(done.length){
+    const d=done.map(t=>parseFloat(t.duration));
+    document.getElementById('lAvg').textContent=(d.reduce((a,b)=>a+b,0)/d.length).toFixed(0);
+    document.getElementById('lMax').textContent=Math.max(...d).toFixed(0);
+    document.getElementById('lOver').textContent=d.filter(x=>x>60).length;
+  }
+  const el=document.getElementById('logList');
+  if(!log.length){el.innerHTML='<div class="empty"><div style="font-size:42px;margin-bottom:8px">📭</div><div style="font-size:14px">ยังไม่มีประวัติ</div></div>';return;}
+  el.innerHTML=log.map(t=>{
+    const d=parseFloat(t.duration)||0;
+    const dc=d>60?'dlong':d>30?'dmid':'dok';
+    return `<div class="lc">
+      <div class="l-wc">${t.no}</div>
+      <div class="l-body">
+        <div class="l-staff">👷 ${t.snick} <span style="font-weight:400;color:var(--gray);font-size:10px">${t.sid}</span></div>
+        <div class="l-detail">${t.startTime}→${t.endTime||'—'} · ${t.type}${t.flight?' · ✈'+t.flight:''}${t.caseSvc?' · '+t.caseSvc:''}</div>
+      </div>
+      <div class="dur ${dc}">${t.duration||'?'}น.</div>
+    </div>`;
+  }).join('');
+}
+function updateStats(){
+  const u=Object.keys(trips).length;
+  document.getElementById('sF').textContent=67-u;
+  document.getElementById('sU').textContent=u;
+  document.getElementById('sT').textContent=log.filter(t=>t.status==='done').length+u;
+}
+
+// ══════════════════════════════════════════════════════════
+// EXPORT
+// ══════════════════════════════════════════════════════════
+function exportCSV(){
+  if(!log.length){toast('ยังไม่มีข้อมูล','terr');return;}
+  const h='Trip ID,WC,ประเภท,รหัสพนักงาน,ชื่อ,เที่ยวบิน,สายการบิน,Routing,STA,STD,เริ่ม,จบ,ระยะเวลา(น.),สถานะ,Case No,SSR';
+  const rows=log.map(t=>[t.id,t.ctrl,t.type,t.sid,t.sname,t.flight||'',t.flAirline||'',t.flRouting||'',t.flSTA||'',t.flSTD||'',t.startTime,t.endTime||'',t.duration||'',t.status,t.caseNo||'',t.caseSvc||''].join(','));
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+[h,...rows].join('\n')],{type:'text/csv;charset=utf-8'}));
+  a.download='WC_Log_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();toast('Export สำเร็จ ✅','tok');
+}
+
+// ══════════════════════════════════════════════════════════
+// GAS SYNC
+// ══════════════════════════════════════════════════════════
+async function sync(action,trip){
+  setSL('busy');
+  try{
+    const r=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,trip})});
+    const data=await r.json();
+    setSL(data.ok?'ok':'err');
+  }catch(e){setSL('err');console.warn('GAS sync:',e);}
+}
+function setSL(s){
+  const el=document.getElementById('syncLbl');
+  const m={busy:'⏳ กำลัง sync...',ok:'✅ บันทึกแล้ว',err:'⚠️ บันทึกไม่สำเร็จ'};
+  el.textContent=m[s]||'Phuket Airport · Ground Handling';
+  if(s==='ok')setTimeout(()=>{if(el.textContent==='✅ บันทึกแล้ว')el.textContent='Phuket Airport · Ground Handling';},3000);
+}
+
+// ══════════════════════════════════════════════════════════
+// FLASH / TOAST
+// ══════════════════════════════════════════════════════════
+function flash(){const el=document.getElementById('flash');el.classList.add('show');setTimeout(()=>el.classList.remove('show'),380);}
+function toast(m,c=''){const t=document.getElementById('toast');t.textContent=m;t.className='show '+c;clearTimeout(window._tt);window._tt=setTimeout(()=>t.className='',2800);}
+
+updateStats();
+</script>
+</body>
+</html>
