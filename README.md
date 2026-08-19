@@ -35,6 +35,33 @@ Google Apps Script Web App + Google Sheets
 6. Deploy → New deployment → Web App (Execute as **Me**, access **Anyone**)
 7. เอา URL ไปใส่ `GAS_URL` ใน `Index.html` แล้ว deploy ใหม่อีกครั้ง
 
+## Auto-deploy เข้า Apps Script (GitHub Actions + clasp)
+
+โค้ดใน repo นี้จะถูก push เข้า Apps Script **อัตโนมัติทุกครั้งที่ merge เข้า `main`**
+(workflow: `.github/workflows/deploy-gas.yml`) — ตั้งค่าครั้งแรกดังนี้:
+
+1. **เปิด Apps Script API ของบัญชีตัวเอง** (ครั้งเดียว):
+   ไปที่ https://script.google.com/home/usersettings → เปิด "Google Apps Script API"
+2. **Login clasp บนเครื่องตัวเอง** (ครั้งเดียว):
+   ```bash
+   npx @google/clasp login
+   ```
+   เสร็จแล้วเปิดไฟล์ `~/.clasprc.json` คัดลอกเนื้อหา**ทั้งไฟล์**ไว้
+3. **ตั้ง Secrets ใน GitHub repo** (Settings → Secrets and variables → Actions → New repository secret):
+   | Secret | ค่า |
+   |---|---|
+   | `CLASPRC_JSON` | เนื้อหาไฟล์ `~/.clasprc.json` จากข้อ 2 |
+   | `GAS_SCRIPT_ID` | Script ID (Apps Script → ⚙ Project Settings → Script ID) |
+   | `GAS_DEPLOYMENT_ID` | *(ไม่บังคับ)* Deployment ID ของ Web App (Deploy → Manage deployments) — ตั้งไว้แล้ว URL `/exec` เดิมจะได้โค้ดใหม่ทันที |
+4. เสร็จแล้ว: merge PR เข้า `main` → Actions จะ `clasp push` ให้เอง
+   (หรือกดรันเองที่ Actions → "Deploy to Apps Script" → Run workflow)
+
+> ไม่ตั้ง `GAS_DEPLOYMENT_ID` ก็ใช้ได้ — โค้ดใน editor จะอัปเดต แต่ Web App
+> จะยังเสิร์ฟเวอร์ชันเดิมจนกว่าจะกด Deploy ใหม่เองใน Apps Script
+
+ไฟล์ `appsscript.json` ใน repo คือ manifest ของโปรเจกต์ (timezone Asia/Bangkok,
+V8, Web App: execute as me / anyone) — แก้ที่นี่แล้ว deploy ตามปกติ
+
 ## Mapping คอลัมน์
 
 ถ้าไฟล์ต้นทางเปลี่ยน layout ให้แก้ค่า index (0-based) ใน `Code.gs`:

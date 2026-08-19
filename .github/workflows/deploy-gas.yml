@@ -1,0 +1,70 @@
+# Auto-deploy โค้ดเข้า Google Apps Script ด้วย clasp
+#
+# ทำงานเมื่อ: push เข้า main (เช่น merge PR) หรือกด Run workflow เอง
+#
+# ── Secrets ที่ต้องตั้งใน repo (Settings → Secrets and variables → Actions) ──
+#  CLASPRC_JSON      : เนื้อหาไฟล์ ~/.clasprc.json ทั้งไฟล์
+#                      (ได้จากการรัน `npx @google/clasp login` บนเครื่องตัวเองครั้งเดียว)
+#  GAS_SCRIPT_ID     : Script ID ของโปรเจกต์ Apps Script
+#                      (Apps Script editor → Project Settings ⚙ → Script ID)
+#  GAS_DEPLOYMENT_ID : (ไม่บังคับ) Deployment ID ของ Web App ที่ deploy ไว้
+#                      (Deploy → Manage deployments → คัดลอก ID)
+#                      ถ้าตั้งไว้ workflow จะอัปเดต deployment เดิม → URL /exec ไม่เปลี่ยน
+#                      ถ้าไม่ตั้ง จะ push โค้ดอย่างเดียว (Web App ยังเสิร์ฟเวอร์ชันเดิม
+#                      จนกว่าจะกด deploy ใหม่เอง)
+
+name: Deploy to Apps Script
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Code.gs'
+      - 'Index.html'
+      - 'appsscript.json'
+      - '.github/workflows/deploy-gas.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install clasp
+        run: npm install -g @google/clasp
+
+      - name: Check secrets
+        run: |
+          if [ -z "${{ secrets.CLASPRC_JSON }}" ]; then
+            echo "::error::ยังไม่ได้ตั้ง secret CLASPRC_JSON (รัน 'npx @google/clasp login' บนเครื่องตัวเอง แล้วเอาเนื้อหา ~/.clasprc.json มาใส่)"
+            exit 1
+          fi
+          if [ -z "${{ secrets.GAS_SCRIPT_ID }}" ]; then
+            echo "::error::ยังไม่ได้ตั้ง secret GAS_SCRIPT_ID (ดูใน Apps Script → Project Settings → Script ID)"
+            exit 1
+          fi
+
+      - name: Write clasp credentials
+        run: printf '%s' "$CLASPRC" > ~/.clasprc.json
+        env:
+          CLASPRC: ${{ secrets.CLASPRC_JSON }}
+
+      - name: Stage files for clasp
+        run: |
+          mkdir -p dist
+          cp Code.gs dist/Code.js
+          cp Index.html dist/Index.html
+          cp appsscript.json dist/appsscript.json
+          printf '{"scriptId":"%s","rootDir":"dist"}' "${{ secrets.GAS_SCRIPT_ID }}" > .clasp.json
+
+      - name: Push code to Apps Script
+        run: clasp push -f
+
+      - name: Update Web App deployment (same URL)
+        if: ${{ secrets.GAS_DEPLOYMENT_ID != '' }}
+        run: clasp deploy -i "${{ secrets.GAS_DEPLOYMENT_ID }}" -d "auto-deploy ${{ github.sha }}"
