@@ -47,7 +47,9 @@ const LOG_SHEET   = 'TripLog';
 const STAT_SHEET  = 'DailySummary';
 const QUEUE_SHEET = 'Queue';
 
-const QUEUE_HEADERS = ['วันที่','ลำดับ','รหัสพนักงาน','ชื่อเล่น','สถานะ','Trips วันนี้','อัปเดต'];
+const QUEUE_HEADERS = ['วันที่','ลำดับ','รหัสพนักงาน','ชื่อเล่น','กะ','สถานะ','Trips วันนี้','อัปเดต'];
+// ↑ "ลำดับ" ใช้เป็นตัวตัดสินเมื่อจำนวนเคสเท่ากัน (คนที่ว่างก่อน/เข้าคิวก่อนขึ้นก่อน)
+//   ลำดับจริงของคิว = เรียงตาม "Trips วันนี้" น้อยสุดขึ้นก่อน แยกตามกะ
 
 // ── COLUMN MAPPING (Daily Flight Schedule Record) ───────────────────
 // Layout: (Date) | Airlines | FLT No. | Routing | STA | STD | A/C TYPE | A/C Reg.
@@ -481,9 +483,10 @@ function markCase(trip, phase, timeStr) {
 // PORTER QUEUE — คิวรับเคสอัตโนมัติ (เก็บใน sheet "Queue" — ทุกเครื่องเห็นตรงกัน)
 // ═══════════════════════════════════════════════════════════════════
 // การทำงาน:
-//  - Supervisor จัดคิวคนเข้าเวรจากหน้า "คิว" ในแอป → queue_set บันทึกลงชีท
+//  - Supervisor จัดคิวคนเข้าเวรจากหน้า "คิว" ในแอป (เลือกกะ A/B/C) → queue_set
+//  - ลำดับคิว = จำนวนเคสวันนี้น้อยสุดขึ้นก่อน (เสมอกัน → คนที่ว่างก่อนขึ้นก่อน)
 //  - เริ่มบริการ (start)  → คนนั้นสถานะ "กำลังบริการ" + นับ trip
-//  - จบบริการ (end)       → กลับเป็น "ว่าง" และไปต่อท้ายคิวอัตโนมัติ
+//  - จบบริการ (end)       → กลับเป็น "ว่าง" (ลำดับตัดสินเสมอถูกดันไปท้าย)
 //  - คิวเป็นรายวัน — ข้ามวันแล้วเริ่มคิวใหม่
 
 function queueTodayStr() {
@@ -506,17 +509,19 @@ function getQueue() {
       order:  Number(data[r][1]) || 0,
       sid:    String(data[r][2] || ''),
       nick:   String(data[r][3] || ''),
-      status: String(data[r][4] || 'ว่าง'),
-      trips:  Number(data[r][5]) || 0,
+      shift:  String(data[r][4] || 'A'),
+      status: String(data[r][5] || 'ว่าง'),
+      trips:  Number(data[r][6]) || 0,
     });
   }
-  list.sort((a, b) => a.order - b.order);
+  // เคสน้อยสุดขึ้นก่อน → เสมอกันใช้ลำดับ (คนที่ว่างก่อน/เข้าคิวก่อน)
+  list.sort((a, b) => (a.trips - b.trips) || (a.order - b.order));
   return list;
 }
 
 // ── บันทึกคิวใหม่ทั้งชุด (จากหน้า "คิว" ในแอป) ──
-// items = [{sid, nick}, ...] เรียงตามลำดับที่ต้องการ
-// สถานะ/จำนวน trip ของคนที่อยู่ในคิวเดิมจะถูกเก็บไว้
+// items = [{sid, nick, shift}, ...]
+// สถานะ/จำนวน trip/ลำดับตัดสินเสมอ ของคนที่อยู่ในคิวเดิมจะถูกเก็บไว้
 function setQueue(items) {
   const ss    = SpreadsheetApp.getActiveSpreadsheet();
   const sh    = getQueueSheet(ss);
@@ -537,9 +542,10 @@ function setQueue(items) {
     const old = prev[String(it.sid)] || {};
     return [
       today,
-      i + 1,
+      old.order || (i + 1),
       String(it.sid || ''),
       String(it.nick || ''),
+      String(it.shift || old.shift || 'A'),
       old.status || 'ว่าง',
       old.trips  || 0,
       now
@@ -560,9 +566,9 @@ function queueOnStart(sid) {
     const data  = sh.getDataRange().getValues();
     for (let r = 1; r < data.length; r++) {
       if (String(data[r][0]) === today && String(data[r][2]) === String(sid)) {
-        sh.getRange(r + 1, 5).setValue('กำลังบริการ');
-        sh.getRange(r + 1, 6).setValue((Number(data[r][5]) || 0) + 1);
-        sh.getRange(r + 1, 7).setValue(Utilities.formatDate(new Date(), 'Asia/Bangkok', 'HH:mm:ss'));
+        sh.getRange(r + 1, 6).setValue('กำลังบริการ');
+        sh.getRange(r + 1, 7).setValue((Number(data[r][6]) || 0) + 1);
+        sh.getRange(r + 1, 8).setValue(Utilities.formatDate(new Date(), 'Asia/Bangkok', 'HH:mm:ss'));
         return;
       }
     }
@@ -581,9 +587,9 @@ function queueOnEnd(sid) {
     }
     for (let r = 1; r < data.length; r++) {
       if (String(data[r][0]) === today && String(data[r][2]) === String(sid)) {
-        sh.getRange(r + 1, 2).setValue(maxOrder + 1);   // ไปต่อท้ายคิว
-        sh.getRange(r + 1, 5).setValue('ว่าง');
-        sh.getRange(r + 1, 7).setValue(Utilities.formatDate(new Date(), 'Asia/Bangkok', 'HH:mm:ss'));
+        sh.getRange(r + 1, 2).setValue(maxOrder + 1);   // ตัวตัดสินเสมอ: ไปท้ายสุด
+        sh.getRange(r + 1, 6).setValue('ว่าง');
+        sh.getRange(r + 1, 8).setValue(Utilities.formatDate(new Date(), 'Asia/Bangkok', 'HH:mm:ss'));
         return;
       }
     }

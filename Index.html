@@ -308,9 +308,10 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
   </div>
   <!-- NEXT IN QUEUE -->
   <div class="q-banner" id="qBanner" style="display:none">
+    <div class="frow" id="qShiftRowHome" style="margin-bottom:8px"></div>
     <div class="q-banner-top">
       <div>
-        <div class="q-next-lbl">🎯 คิวถัดไป</div>
+        <div class="q-next-lbl">🎯 คิวถัดไป · กะ <span id="qShiftLbl">A</span></div>
         <div class="q-next-name" id="qNextName">—</div>
       </div>
       <div class="q-next-rest" id="qNextRest"></div>
@@ -329,8 +330,9 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 <div class="page" id="pg-queue">
   <div class="shdr">
     <div><div class="shdr-title">🔄 คิวรับเคสวันนี้</div>
-    <div class="shdr-sub">เรียงลำดับคนรับเคส — จบงานแล้วไปต่อท้ายคิวอัตโนมัติ</div></div>
+    <div class="shdr-sub">เรียงอัตโนมัติ: เคสน้อยสุดขึ้นก่อน · เสมอกันคนที่ว่างก่อนขึ้นก่อน</div></div>
   </div>
+  <div class="frow" id="qShiftRow"></div>
   <div class="sync-bar sync-idle" id="qStatus">⏳ กำลังโหลดคิว...</div>
   <div id="queueList"></div>
   <button class="bbtn b-new" style="margin-top:10px;font-size:15px" onclick="toggleQAdd()">➕ เพิ่มพนักงานเข้าคิว</button>
@@ -584,6 +586,9 @@ const WC=[
 let selS=null, selW=null, selFlight=null, selCase=null;
 let trips={}, log=[], cnt=1, stopCtrl=null, wcF='all';
 let queueList=[], queueLoadedAt=0, queueMode=false;
+const SHIFTS=['A','B','C'];
+let curShift=localStorage.getItem('wcShift')||'A';
+if(!SHIFTS.includes(curShift))curShift='A';
 let flightCache=null;         // cache flight list
 let caseCache=null, caseCacheAt=0;  // cache case list (refresh ทุก 60 วิ)
 const CASE_TTL=60000;
@@ -700,10 +705,31 @@ async function loadQueue(force){
   renderQueue();renderQueueBanner();
 }
 
-// คนถัดไป = คนแรกในคิวที่สถานะว่าง และไม่มี trip ค้างในเครื่องนี้
+// ── กะ (A/B/C) ──
+function setShift(f){
+  curShift=f;
+  try{localStorage.setItem('wcShift',f);}catch(e){}
+  renderQueue();renderQueueBanner();
+  const box=document.getElementById('qAddBox');
+  if(box&&box.style.display!=='none')renderQAddGrid(document.getElementById('qStaffQ').value);
+}
+function shiftChipsHTML(){
+  return SHIFTS.map(f=>{
+    const cnt=queueList.filter(q=>q.shift===f).length;
+    return `<button class="fc ${curShift===f?'act':''}" onclick="setShift('${f}')">กะ ${f}${cnt?' ('+cnt+')':''}</button>`;
+  }).join('');
+}
+
+// เรียงคิวในกะ: เคสน้อยสุดขึ้นก่อน → เสมอกันคนที่ว่างก่อน/เข้าคิวก่อนขึ้นก่อน
+function sortedShiftQueue(shift){
+  return queueList.filter(q=>(q.shift||'A')===shift)
+    .sort((a,b)=>((a.trips||0)-(b.trips||0))||((a.order||0)-(b.order||0)));
+}
+
+// คนถัดไป = คนในกะที่เลือก เคสน้อยสุด สถานะว่าง และไม่มี trip ค้างในเครื่องนี้
 function nextInQueue(){
   const busySids=new Set(Object.values(trips).map(t=>t.sid));
-  return queueList.find(q=>q.status!=='กำลังบริการ' && !busySids.has(q.sid))||null;
+  return sortedShiftQueue(curShift).find(q=>q.status!=='กำลังบริการ' && !busySids.has(q.sid))||null;
 }
 
 function renderQueueBanner(){
@@ -712,24 +738,30 @@ function renderQueueBanner(){
   if(!queueList.length){b.style.display='none';return;}
   const n=nextInQueue();
   b.style.display='block';
-  document.getElementById('qNextName').textContent=n?('👷 '+n.nick):'— ทุกคนกำลังบริการ —';
+  const hc=document.getElementById('qShiftRowHome');
+  if(hc)hc.innerHTML=shiftChipsHTML();
+  document.getElementById('qShiftLbl').textContent=curShift;
+  document.getElementById('qNextName').textContent=n?('👷 '+n.nick+' ('+(n.trips||0)+' เคส)'):'— ไม่มีคนว่างในกะ '+curShift+' —';
   const busySids=new Set(Object.values(trips).map(t=>t.sid));
-  const rest=queueList.filter(q=>q.status!=='กำลังบริการ'&&!busySids.has(q.sid)&&(!n||q.sid!==n.sid)).slice(0,3);
+  const rest=sortedShiftQueue(curShift).filter(q=>q.status!=='กำลังบริการ'&&!busySids.has(q.sid)&&(!n||q.sid!==n.sid)).slice(0,3);
   document.getElementById('qNextRest').innerHTML=rest.length
-    ?('ต่อไป:<br>'+rest.map((q,i)=>(i+2)+'. '+q.nick).join('<br>')):'';
+    ?('ต่อไป:<br>'+rest.map((q,i)=>(i+2)+'. '+q.nick+' ('+(q.trips||0)+')').join('<br>')):'';
 }
 
 function renderQueue(){
   const el=document.getElementById('queueList');
   const st=document.getElementById('qStatus');
+  const sr=document.getElementById('qShiftRow');
   if(!el)return;
-  if(st){st.className='sync-bar sync-idle';st.textContent='คิววันนี้ '+queueList.length+' คน · จบงานแล้วไปต่อท้ายคิวอัตโนมัติ';}
-  if(!queueList.length){
-    el.innerHTML='<div class="empty"><div style="font-size:42px;margin-bottom:8px">🔄</div><div style="font-size:14px">ยังไม่มีคิววันนี้<br>กด "เพิ่มพนักงานเข้าคิว" ด้านล่าง</div></div>';
+  if(sr)sr.innerHTML=shiftChipsHTML();
+  const list=sortedShiftQueue(curShift);
+  if(st){st.className='sync-bar sync-idle';st.textContent='กะ '+curShift+' · '+list.length+' คน · เรียงตามเคสน้อยสุดอัตโนมัติ';}
+  if(!list.length){
+    el.innerHTML='<div class="empty"><div style="font-size:42px;margin-bottom:8px">🔄</div><div style="font-size:14px">ยังไม่มีคิวกะ '+curShift+'<br>กด "เพิ่มพนักงานเข้าคิว" ด้านล่าง</div></div>';
     return;
   }
   const n=nextInQueue();
-  el.innerHTML=queueList.map((q,i)=>{
+  el.innerHTML=list.map((q,i)=>{
     const busy=q.status==='กำลังบริการ';
     return `<div class="qi ${busy?'busy':''} ${n&&q.sid===n.sid?'next':''}">
       <div class="q-ord">${i+1}</div>
@@ -738,20 +770,17 @@ function renderQueue(){
         <div class="q-meta">${q.sid} · วันนี้ ${q.trips||0} เคส</div>
       </div>
       <span class="q-chip ${busy?'q-busy':'q-free'}">${busy?'กำลังบริการ':'ว่าง'}</span>
-      <button class="q-btn" onclick="moveQ(${i},-1)">▲</button>
-      <button class="q-btn" onclick="moveQ(${i},1)">▼</button>
-      <button class="q-btn del" onclick="removeQ(${i})">✕</button>
+      <button class="q-btn del" onclick="removeQ('${q.sid}')">✕</button>
     </div>`;
   }).join('');
 }
 
-function moveQ(i,dir){
-  const j=i+dir;
-  if(j<0||j>=queueList.length)return;
-  [queueList[i],queueList[j]]=[queueList[j],queueList[i]];
-  renderQueue();saveQueue();
+function removeQ(sid){
+  const i=queueList.findIndex(q=>q.sid===sid);
+  if(i<0)return;
+  queueList.splice(i,1);
+  renderQueue();renderQueueBanner();saveQueue();
 }
-function removeQ(i){queueList.splice(i,1);renderQueue();renderQueueBanner();saveQueue();}
 
 function toggleQAdd(){
   const box=document.getElementById('qAddBox');
@@ -772,9 +801,10 @@ function renderQAddGrid(q){
 }
 function addToQ(id){
   const s=STAFF.find(x=>x.id===id);if(!s)return;
-  queueList.push({sid:s.id,nick:s.nick,status:'ว่าง',trips:0,order:queueList.length+1});
+  const maxOrd=queueList.reduce((m,q)=>Math.max(m,q.order||0),0);
+  queueList.push({sid:s.id,nick:s.nick,shift:curShift,status:'ว่าง',trips:0,order:maxOrd+1});
   renderQueue();renderQueueBanner();renderQAddGrid(document.getElementById('qStaffQ').value);
-  toast('➕ '+s.nick+' เข้าคิวลำดับ '+queueList.length,'tok');
+  toast('➕ '+s.nick+' เข้าคิวกะ '+curShift,'tok');
   saveQueue();
 }
 
@@ -784,7 +814,7 @@ function saveQueue(){
   _qSaveT=setTimeout(async()=>{
     try{
       const r=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({action:'queue_set',queue:queueList.map(q=>({sid:q.sid,nick:q.nick}))})});
+        body:JSON.stringify({action:'queue_set',queue:queueList.map(q=>({sid:q.sid,nick:q.nick,shift:q.shift||'A'}))})});
       const data=await r.json();
       if(data.ok&&data.queue){queueList=data.queue;queueLoadedAt=Date.now();renderQueue();renderQueueBanner();}
     }catch(e){console.warn('queue save:',e);toast('บันทึกคิวไม่สำเร็จ','terr');}
@@ -794,10 +824,10 @@ function saveQueue(){
 // ── รับเคสตามคิว: คนถัดไป + เคสค้างเก่าสุด อัตโนมัติ ──
 function startQueueFlow(){
   const n=nextInQueue();
-  if(!n){toast('ไม่มีคนว่างในคิว','terr');return;}
+  if(!n){toast('ไม่มีคนว่างในคิวกะ '+curShift,'terr');return;}
   const s=STAFF.find(x=>x.id===n.sid)||{id:n.sid,nick:n.nick,name:n.nick};
   selS=s;queueMode=true;
-  toast('🎯 ตามคิว: '+s.nick,'tok');
+  toast('🎯 ตามคิวกะ '+curShift+': '+s.nick+' ('+(n.trips||0)+' เคส)','tok');
   go(2);
 }
 
@@ -1043,9 +1073,9 @@ function confirmStop(){
   delete trips[stopCtrl];
   sync('end',t);closeMo();
   caseCache=null; // สถานะส่งเคสเปลี่ยน
-  // คิวฝั่งเครื่องนี้: กลับเป็นว่าง + ไปต่อท้ายคิว (server ทำผ่าน handleEnd อยู่แล้ว)
-  const qi=queueList.findIndex(q=>q.sid===t.sid);
-  if(qi>=0){const[qe]=queueList.splice(qi,1);qe.status='ว่าง';queueList.push(qe);}
+  // คิวฝั่งเครื่องนี้: กลับเป็นว่าง + ดันตัวตัดสินเสมอไปท้ายสุด (server ทำผ่าน handleEnd อยู่แล้ว)
+  const qe2=queueList.find(q=>q.sid===t.sid);
+  if(qe2){qe2.status='ว่าง';qe2.order=queueList.reduce((m,q)=>Math.max(m,q.order||0),0)+1;}
   flash();toast('🔴 จบแล้ว · '+t.snick+' · '+t.duration+' น.','tok');
   updateStats();renderBoard();renderQueueBanner();
   setTimeout(()=>loadQueue(true),2500);
