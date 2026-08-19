@@ -197,6 +197,31 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 .dmid{background:var(--yellow-lt);color:var(--yellow)}
 .dlong{background:var(--red-lt);color:var(--red)}
 
+/* QUEUE */
+.q-banner{background:linear-gradient(135deg,#eff6ff,#dbeafe);border:2px solid #bfdbfe;
+  border-radius:14px;padding:13px 14px;margin-bottom:14px;box-shadow:var(--sh)}
+.q-banner-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.q-next-lbl{font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px}
+.q-next-name{font-size:20px;font-weight:800;color:var(--blue-dk);margin-top:2px}
+.q-next-rest{font-size:11px;color:var(--gray);text-align:right;line-height:1.6}
+.qi{background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:7px;
+  box-shadow:var(--sh);display:flex;align-items:center;gap:9px}
+.qi.busy{opacity:.65;background:var(--yellow-lt)}
+.qi.next{border:2px solid var(--blue)}
+.q-ord{width:28px;height:28px;border-radius:50%;background:var(--blue-lt);color:var(--blue-dk);
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0}
+.qi.busy .q-ord{background:var(--yellow-lt);color:var(--yellow)}
+.q-body{flex:1;min-width:0}
+.q-nick{font-size:14px;font-weight:700}
+.q-meta{font-size:10px;color:var(--gray)}
+.q-chip{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap}
+.q-free{background:var(--green-lt);color:var(--green)}
+.q-busy{background:var(--yellow-lt);color:var(--yellow)}
+.q-btn{border:none;background:var(--gray-lt);color:var(--gray);border-radius:8px;
+  width:30px;height:30px;font-size:13px;cursor:pointer;flex-shrink:0}
+.q-btn:active{background:var(--blue-lt);color:var(--blue)}
+.q-btn.del{background:var(--red-lt);color:var(--red)}
+
 /* EMPTY */
 .empty{background:#fff;border-radius:14px;padding:34px 20px;text-align:center;
   color:var(--text3);box-shadow:var(--sh)}
@@ -281,10 +306,37 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
     <div class="sbox"><div class="snum cy" id="sU">0</div><div class="stxt">ใช้งาน</div></div>
     <div class="sbox"><div class="snum cr" id="sT">0</div><div class="stxt">วันนี้</div></div>
   </div>
+  <!-- NEXT IN QUEUE -->
+  <div class="q-banner" id="qBanner" style="display:none">
+    <div class="q-banner-top">
+      <div>
+        <div class="q-next-lbl">🎯 คิวถัดไป</div>
+        <div class="q-next-name" id="qNextName">—</div>
+      </div>
+      <div class="q-next-rest" id="qNextRest"></div>
+    </div>
+    <button class="bbtn b-start" style="margin-top:10px" onclick="startQueueFlow()">▶ รับเคสตามคิว (อัตโนมัติ)</button>
+  </div>
+
   <div class="sec">⏱ กำลังให้บริการ</div>
   <div id="activeBoard"><div class="empty"><div style="font-size:42px;margin-bottom:8px">🏁</div><div style="font-size:14px">ยังไม่มีการให้บริการ</div></div></div>
   <div style="margin-top:13px">
-    <button class="bbtn b-new" onclick="go(1)">➕ เริ่มให้บริการใหม่</button>
+    <button class="bbtn b-new" onclick="go(1)">➕ เริ่มให้บริการใหม่ (เลือกเอง)</button>
+  </div>
+</div>
+
+<!-- QUEUE PAGE -->
+<div class="page" id="pg-queue">
+  <div class="shdr">
+    <div><div class="shdr-title">🔄 คิวรับเคสวันนี้</div>
+    <div class="shdr-sub">เรียงลำดับคนรับเคส — จบงานแล้วไปต่อท้ายคิวอัตโนมัติ</div></div>
+  </div>
+  <div class="sync-bar sync-idle" id="qStatus">⏳ กำลังโหลดคิว...</div>
+  <div id="queueList"></div>
+  <button class="bbtn b-new" style="margin-top:10px;font-size:15px" onclick="toggleQAdd()">➕ เพิ่มพนักงานเข้าคิว</button>
+  <div id="qAddBox" style="display:none;margin-top:10px">
+    <input class="sbox-inp" id="qStaffQ" placeholder="🔍 ค้นหาชื่อหรือรหัส..." oninput="renderQAddGrid(this.value)">
+    <div class="staff-grid" id="qAddGrid" style="max-height:40vh"></div>
   </div>
 </div>
 
@@ -394,6 +446,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 
 <div class="bnav">
   <button class="bn active" id="bn0" onclick="showMain('home',this)"><span class="ico">🏠</span>หน้าหลัก</button>
+  <button class="bn" id="bnQ" onclick="showMain('queue',this)"><span class="ico">🔄</span>คิว</button>
   <button class="bn" id="bn1" onclick="showMain('log',this)"><span class="ico">📋</span>ประวัติ</button>
 </div>
 
@@ -530,6 +583,7 @@ const WC=[
 // ══════════════════════════════════════════════════════════
 let selS=null, selW=null, selFlight=null, selCase=null;
 let trips={}, log=[], cnt=1, stopCtrl=null, wcF='all';
+let queueList=[], queueLoadedAt=0, queueMode=false;
 let flightCache=null;         // cache flight list
 let caseCache=null, caseCacheAt=0;  // cache case list (refresh ทุก 60 วิ)
 const CASE_TTL=60000;
@@ -553,7 +607,8 @@ function showMain(id,el){
   document.querySelectorAll('.bn').forEach(b=>b.classList.remove('active'));
   if(el)el.classList.add('active');
   if(id==='log')renderLog();
-  if(id==='home')renderBoard();
+  if(id==='home'){renderBoard();loadQueue();}
+  if(id==='queue')loadQueue(true);
 }
 function go(s){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -561,8 +616,8 @@ function go(s){
   document.getElementById('bn0').classList.add('active');
   const pages=['pg-home','pg-s1','pg-s2','pg-s3'];
   document.getElementById(pages[s]).classList.add('active');
-  if(s===0){renderBoard();}
-  else if(s===1){renderStaff('');document.getElementById('staffQ').value='';}
+  if(s===0){renderBoard();renderQueueBanner();}
+  else if(s===1){queueMode=false;renderStaff('');document.getElementById('staffQ').value='';}
   else if(s===2){
     if(!selS){toast('เลือกพนักงานก่อนนะ','terr');go(1);return;}
     document.getElementById('s2sub').textContent=selS.nick+' — กดคันที่จะใช้';
@@ -633,6 +688,120 @@ function setF(f,el){wcF=f;document.querySelectorAll('.fc').forEach(c=>c.classLis
 function pickW(ctrl){if(trips[ctrl]){openStop(ctrl);return;}selW=WC.find(w=>w.ctrl===ctrl);renderWC();setTimeout(()=>go(3),180);}
 
 // ══════════════════════════════════════════════════════════
+// PORTER QUEUE — คิวรับเคสอัตโนมัติ (sync กับ sheet "Queue")
+// ══════════════════════════════════════════════════════════
+async function loadQueue(force){
+  if(!force && (Date.now()-queueLoadedAt)<30000){renderQueue();renderQueueBanner();return;}
+  try{
+    const r=await fetch(GAS_URL+'?action=queue');
+    const data=await r.json();
+    if(data.ok){queueList=data.queue||[];queueLoadedAt=Date.now();}
+  }catch(e){console.warn('queue load:',e);}
+  renderQueue();renderQueueBanner();
+}
+
+// คนถัดไป = คนแรกในคิวที่สถานะว่าง และไม่มี trip ค้างในเครื่องนี้
+function nextInQueue(){
+  const busySids=new Set(Object.values(trips).map(t=>t.sid));
+  return queueList.find(q=>q.status!=='กำลังบริการ' && !busySids.has(q.sid))||null;
+}
+
+function renderQueueBanner(){
+  const b=document.getElementById('qBanner');
+  if(!b)return;
+  if(!queueList.length){b.style.display='none';return;}
+  const n=nextInQueue();
+  b.style.display='block';
+  document.getElementById('qNextName').textContent=n?('👷 '+n.nick):'— ทุกคนกำลังบริการ —';
+  const busySids=new Set(Object.values(trips).map(t=>t.sid));
+  const rest=queueList.filter(q=>q.status!=='กำลังบริการ'&&!busySids.has(q.sid)&&(!n||q.sid!==n.sid)).slice(0,3);
+  document.getElementById('qNextRest').innerHTML=rest.length
+    ?('ต่อไป:<br>'+rest.map((q,i)=>(i+2)+'. '+q.nick).join('<br>')):'';
+}
+
+function renderQueue(){
+  const el=document.getElementById('queueList');
+  const st=document.getElementById('qStatus');
+  if(!el)return;
+  if(st){st.className='sync-bar sync-idle';st.textContent='คิววันนี้ '+queueList.length+' คน · จบงานแล้วไปต่อท้ายคิวอัตโนมัติ';}
+  if(!queueList.length){
+    el.innerHTML='<div class="empty"><div style="font-size:42px;margin-bottom:8px">🔄</div><div style="font-size:14px">ยังไม่มีคิววันนี้<br>กด "เพิ่มพนักงานเข้าคิว" ด้านล่าง</div></div>';
+    return;
+  }
+  const n=nextInQueue();
+  el.innerHTML=queueList.map((q,i)=>{
+    const busy=q.status==='กำลังบริการ';
+    return `<div class="qi ${busy?'busy':''} ${n&&q.sid===n.sid?'next':''}">
+      <div class="q-ord">${i+1}</div>
+      <div class="q-body">
+        <div class="q-nick">${q.nick}${n&&q.sid===n.sid?' <span style="color:var(--blue);font-size:11px">← ถัดไป</span>':''}</div>
+        <div class="q-meta">${q.sid} · วันนี้ ${q.trips||0} เคส</div>
+      </div>
+      <span class="q-chip ${busy?'q-busy':'q-free'}">${busy?'กำลังบริการ':'ว่าง'}</span>
+      <button class="q-btn" onclick="moveQ(${i},-1)">▲</button>
+      <button class="q-btn" onclick="moveQ(${i},1)">▼</button>
+      <button class="q-btn del" onclick="removeQ(${i})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function moveQ(i,dir){
+  const j=i+dir;
+  if(j<0||j>=queueList.length)return;
+  [queueList[i],queueList[j]]=[queueList[j],queueList[i]];
+  renderQueue();saveQueue();
+}
+function removeQ(i){queueList.splice(i,1);renderQueue();renderQueueBanner();saveQueue();}
+
+function toggleQAdd(){
+  const box=document.getElementById('qAddBox');
+  const show=box.style.display==='none';
+  box.style.display=show?'block':'none';
+  if(show){document.getElementById('qStaffQ').value='';renderQAddGrid('');}
+}
+function renderQAddGrid(q){
+  q=(q||'').toLowerCase();
+  const inQ=new Set(queueList.map(x=>x.sid));
+  let list=STAFF.filter(s=>!inQ.has(s.id));
+  if(q)list=list.filter(s=>s.name.includes(q)||s.id.includes(q)||s.nick.includes(q));
+  const g=document.getElementById('qAddGrid');
+  if(!list.length){g.innerHTML='<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--text3)">ไม่พบ / อยู่ในคิวหมดแล้ว</div>';return;}
+  g.innerHTML=list.map(s=>`<div class="sc" onclick="addToQ('${s.id}')">
+    <div class="s-av">👷</div><div class="s-nick">${s.nick}</div><div class="s-id">${s.id}</div>
+  </div>`).join('');
+}
+function addToQ(id){
+  const s=STAFF.find(x=>x.id===id);if(!s)return;
+  queueList.push({sid:s.id,nick:s.nick,status:'ว่าง',trips:0,order:queueList.length+1});
+  renderQueue();renderQueueBanner();renderQAddGrid(document.getElementById('qStaffQ').value);
+  toast('➕ '+s.nick+' เข้าคิวลำดับ '+queueList.length,'tok');
+  saveQueue();
+}
+
+let _qSaveT=null;
+function saveQueue(){
+  clearTimeout(_qSaveT);
+  _qSaveT=setTimeout(async()=>{
+    try{
+      const r=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'queue_set',queue:queueList.map(q=>({sid:q.sid,nick:q.nick}))})});
+      const data=await r.json();
+      if(data.ok&&data.queue){queueList=data.queue;queueLoadedAt=Date.now();renderQueue();renderQueueBanner();}
+    }catch(e){console.warn('queue save:',e);toast('บันทึกคิวไม่สำเร็จ','terr');}
+  },600);
+}
+
+// ── รับเคสตามคิว: คนถัดไป + เคสค้างเก่าสุด อัตโนมัติ ──
+function startQueueFlow(){
+  const n=nextInQueue();
+  if(!n){toast('ไม่มีคนว่างในคิว','terr');return;}
+  const s=STAFF.find(x=>x.id===n.sid)||{id:n.sid,nick:n.nick,name:n.nick};
+  selS=s;queueMode=true;
+  toast('🎯 ตามคิว: '+s.nick,'tok');
+  go(2);
+}
+
+// ══════════════════════════════════════════════════════════
 // CASE LOADER — ดึงเคส assign จาก Porter Summary ผ่าน GAS
 // ══════════════════════════════════════════════════════════
 let todayCases=[];
@@ -692,6 +861,12 @@ function renderCaseList(cases){
 
   html+=`</div><div class="fl-none" style="margin-top:8px" onclick="skipCase()">ไม่ลิงก์เคส / ข้าม →</div>`;
   el.innerHTML=html;
+
+  // โหมดรับเคสตามคิว: เลือกเคสค้างที่เก่าสุดให้อัตโนมัติ (เปลี่ยนเองได้)
+  if(queueMode && !selCase){
+    const auto=todayCases.findIndex(c=>!c.delivered && !c.pickup);
+    if(auto>=0)pickCase(auto);
+  }
 }
 
 function filterCase(q){
@@ -831,9 +1006,14 @@ function startService(){
   trips[ctrl]=trip;
   sync('start',trip);
   flash();toast('🟢 '+selS.nick+' · '+ctrl+(trip.flight?' ✈'+trip.flight:'')+(trip.caseNo?' 📋#'+trip.caseNo:''),'tok');
+  // อัปเดตคิวฝั่งเครื่องนี้ทันที (server อัปเดตผ่าน handleStart อยู่แล้ว)
+  const qe=queueList.find(q=>q.sid===trip.sid);
+  if(qe){qe.status='กำลังบริการ';qe.trips=(qe.trips||0)+1;}
+  queueMode=false;
   selS=null;selW=null;selFlight=null;selCase=null;
   caseCache=null; // ให้โหลดเคสใหม่รอบหน้า (สถานะรับเคสเปลี่ยนแล้ว)
   updateStats();go(0);
+  setTimeout(()=>loadQueue(true),2500);
 }
 
 function openStop(ctrl){
@@ -863,8 +1043,12 @@ function confirmStop(){
   delete trips[stopCtrl];
   sync('end',t);closeMo();
   caseCache=null; // สถานะส่งเคสเปลี่ยน
+  // คิวฝั่งเครื่องนี้: กลับเป็นว่าง + ไปต่อท้ายคิว (server ทำผ่าน handleEnd อยู่แล้ว)
+  const qi=queueList.findIndex(q=>q.sid===t.sid);
+  if(qi>=0){const[qe]=queueList.splice(qi,1);qe.status='ว่าง';queueList.push(qe);}
   flash();toast('🔴 จบแล้ว · '+t.snick+' · '+t.duration+' น.','tok');
-  updateStats();renderBoard();
+  updateStats();renderBoard();renderQueueBanner();
+  setTimeout(()=>loadQueue(true),2500);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -978,6 +1162,7 @@ function flash(){const el=document.getElementById('flash');el.classList.add('sho
 function toast(m,c=''){const t=document.getElementById('toast');t.textContent=m;t.className='show '+c;clearTimeout(window._tt);window._tt=setTimeout(()=>t.className='',2800);}
 
 updateStats();
+loadQueue();
 </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════
-// WC TRACKER — Google Apps Script Backend  v3.1
+// WC TRACKER — Google Apps Script Backend  v3.2
 // Phuket Airport · Ground Handling
 // ═══════════════════════════════════════════════════════════════════
 //
@@ -45,6 +45,9 @@ const PORTER_WRITEBACK = true;
 
 const LOG_SHEET   = 'TripLog';
 const STAT_SHEET  = 'DailySummary';
+const QUEUE_SHEET = 'Queue';
+
+const QUEUE_HEADERS = ['วันที่','ลำดับ','รหัสพนักงาน','ชื่อเล่น','สถานะ','Trips วันนี้','อัปเดต'];
 
 // ── COLUMN MAPPING (Daily Flight Schedule Record) ───────────────────
 // Layout: (Date) | Airlines | FLT No. | Routing | STA | STD | A/C TYPE | A/C Reg.
@@ -121,9 +124,15 @@ function doGet(e) {
     catch (err) { return jsonErr('cases error: ' + err.message); }
   }
 
+  // API: today's porter queue
+  if (action === 'queue') {
+    try { return jsonOk({ queue: getQueue() }); }
+    catch (err) { return jsonErr('queue error: ' + err.message); }
+  }
+
   // API: health check
   if (action === 'health') {
-    return jsonOk({ app: 'WC Tracker HKT', version: '3.1', time: new Date().toISOString() });
+    return jsonOk({ app: 'WC Tracker HKT', version: '3.2', time: new Date().toISOString() });
   }
 
   // Default: serve the web-app UI
@@ -142,9 +151,10 @@ function doPost(e) {
     const action = data.action;
     const trip   = data.trip;
 
-    if      (action === 'start') return jsonOk(handleStart(trip));
-    else if (action === 'end')   return jsonOk(handleEnd(trip));
-    else                          return jsonErr('Unknown action: ' + action);
+    if      (action === 'start')     return jsonOk(handleStart(trip));
+    else if (action === 'end')       return jsonOk(handleEnd(trip));
+    else if (action === 'queue_set') return jsonOk({ queue: setQueue(data.queue || []) });
+    else                              return jsonErr('Unknown action: ' + action);
 
   } catch (err) {
     Logger.log('doPost error: ' + err.message);
@@ -468,6 +478,119 @@ function markCase(trip, phase, timeStr) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// PORTER QUEUE — คิวรับเคสอัตโนมัติ (เก็บใน sheet "Queue" — ทุกเครื่องเห็นตรงกัน)
+// ═══════════════════════════════════════════════════════════════════
+// การทำงาน:
+//  - Supervisor จัดคิวคนเข้าเวรจากหน้า "คิว" ในแอป → queue_set บันทึกลงชีท
+//  - เริ่มบริการ (start)  → คนนั้นสถานะ "กำลังบริการ" + นับ trip
+//  - จบบริการ (end)       → กลับเป็น "ว่าง" และไปต่อท้ายคิวอัตโนมัติ
+//  - คิวเป็นรายวัน — ข้ามวันแล้วเริ่มคิวใหม่
+
+function queueTodayStr() {
+  return Utilities.formatDate(new Date(), 'Asia/Bangkok', 'dd/MM/yyyy');
+}
+
+function getQueueSheet(ss) {
+  return getOrCreateSheet(ss || SpreadsheetApp.getActiveSpreadsheet(), QUEUE_SHEET, QUEUE_HEADERS);
+}
+
+// ── อ่านคิวของวันนี้ (เรียงตามลำดับ) ──
+function getQueue() {
+  const sh    = getQueueSheet();
+  const today = queueTodayStr();
+  const data  = sh.getDataRange().getValues();
+  const list  = [];
+  for (let r = 1; r < data.length; r++) {
+    if (String(data[r][0]) !== today) continue;
+    list.push({
+      order:  Number(data[r][1]) || 0,
+      sid:    String(data[r][2] || ''),
+      nick:   String(data[r][3] || ''),
+      status: String(data[r][4] || 'ว่าง'),
+      trips:  Number(data[r][5]) || 0,
+    });
+  }
+  list.sort((a, b) => a.order - b.order);
+  return list;
+}
+
+// ── บันทึกคิวใหม่ทั้งชุด (จากหน้า "คิว" ในแอป) ──
+// items = [{sid, nick}, ...] เรียงตามลำดับที่ต้องการ
+// สถานะ/จำนวน trip ของคนที่อยู่ในคิวเดิมจะถูกเก็บไว้
+function setQueue(items) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sh    = getQueueSheet(ss);
+  const today = queueTodayStr();
+  const now   = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'HH:mm:ss');
+
+  // เก็บสถานะเดิมไว้ก่อนล้าง
+  const prev = {};
+  getQueue().forEach(q => { prev[q.sid] = q; });
+
+  // ลบแถวของวันนี้ (และวันเก่า — เก็บชีทให้สะอาด)
+  const data = sh.getDataRange().getValues();
+  for (let r = data.length - 1; r >= 1; r--) {
+    sh.deleteRow(r + 1);
+  }
+
+  const rows = (items || []).map((it, i) => {
+    const old = prev[String(it.sid)] || {};
+    return [
+      today,
+      i + 1,
+      String(it.sid || ''),
+      String(it.nick || ''),
+      old.status || 'ว่าง',
+      old.trips  || 0,
+      now
+    ];
+  });
+  if (rows.length) sh.getRange(2, 1, rows.length, QUEUE_HEADERS.length).setValues(rows);
+
+  Logger.log('setQueue: ' + rows.length + ' คน');
+  return getQueue();
+}
+
+// ── hook ตอน start/end trip ──
+function queueOnStart(sid) {
+  try {
+    if (!sid) return;
+    const sh    = getQueueSheet();
+    const today = queueTodayStr();
+    const data  = sh.getDataRange().getValues();
+    for (let r = 1; r < data.length; r++) {
+      if (String(data[r][0]) === today && String(data[r][2]) === String(sid)) {
+        sh.getRange(r + 1, 5).setValue('กำลังบริการ');
+        sh.getRange(r + 1, 6).setValue((Number(data[r][5]) || 0) + 1);
+        sh.getRange(r + 1, 7).setValue(Utilities.formatDate(new Date(), 'Asia/Bangkok', 'HH:mm:ss'));
+        return;
+      }
+    }
+  } catch (e) { Logger.log('queueOnStart error: ' + e.message); }
+}
+
+function queueOnEnd(sid) {
+  try {
+    if (!sid) return;
+    const sh    = getQueueSheet();
+    const today = queueTodayStr();
+    const data  = sh.getDataRange().getValues();
+    let maxOrder = 0;
+    for (let r = 1; r < data.length; r++) {
+      if (String(data[r][0]) === today) maxOrder = Math.max(maxOrder, Number(data[r][1]) || 0);
+    }
+    for (let r = 1; r < data.length; r++) {
+      if (String(data[r][0]) === today && String(data[r][2]) === String(sid)) {
+        sh.getRange(r + 1, 2).setValue(maxOrder + 1);   // ไปต่อท้ายคิว
+        sh.getRange(r + 1, 5).setValue('ว่าง');
+        sh.getRange(r + 1, 7).setValue(Utilities.formatDate(new Date(), 'Asia/Bangkok', 'HH:mm:ss'));
+        return;
+      }
+    }
+  } catch (e) { Logger.log('queueOnEnd error: ' + e.message); }
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // handleStart
 // ═══════════════════════════════════════════════════════════════════
 function handleStart(trip) {
@@ -504,6 +627,9 @@ function handleStart(trip) {
 
   // write-back "รับเคส" → Porter Summary
   markCase(trip, 'pickup', startTime.slice(0, 5));
+
+  // อัปเดตคิว: คนนี้กำลังบริการ
+  queueOnStart(trip.sid);
 
   Logger.log('START: ' + trip.id + ' | ' + trip.snick + ' | ' + trip.ctrl
     + (trip.caseNo ? ' | case #' + trip.caseNo : ''));
@@ -562,6 +688,9 @@ function handleEnd(trip) {
 
   // write-back "ส่งเคส" → Porter Summary
   markCase(trip, 'deliver', endTime.slice(0, 5));
+
+  // อัปเดตคิว: กลับเป็นว่าง + ไปต่อท้ายคิว
+  queueOnEnd(trip.sid);
 
   updateDailySummary(ss);
 
@@ -675,6 +804,7 @@ function setupSheets() {
   getOrCreateSheet(ss, STAT_SHEET, [
     'วันที่','Trips ทั้งหมด','Trips เสร็จ','เฉลี่ย (น.)','นานสุด (น.)','สั้นสุด (น.)','> 60 น.','อัปเดต'
   ]);
+  getOrCreateSheet(ss, QUEUE_SHEET, QUEUE_HEADERS);
   ss.rename('WC Tracker Log — HKT Ground Handling');
   SpreadsheetApp.getUi().alert(
     '✅ ตั้งค่าเสร็จ!\n\n' +
