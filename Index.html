@@ -112,6 +112,11 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 .wi.inuse .w-dot,.wi.overdue .w-dot{background:var(--yellow)}
 .wi.overdue .w-dot{background:var(--red)}
 .wi.sel .w-dot{background:var(--blue)}
+.wi.repair{border-color:var(--red);background:#fef2f2;opacity:.9}
+.wi.repair .w-num{color:var(--red);text-decoration:line-through}
+.wi.repair .w-dot{background:var(--red)}
+.w-fix{font-size:9px;color:var(--red);font-weight:700;margin-top:2px}
+.hint{font-size:11px;color:var(--gray);text-align:center;margin:6px 0 2px}
 
 /* CONFIRM */
 .cf-card{background:#fff;border-radius:14px;padding:16px;box-shadow:var(--sh-lg);margin-bottom:12px}
@@ -302,6 +307,21 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
+<!-- REPAIR MODAL -->
+<div class="mo" id="wcMo">
+  <div class="ms">
+    <div class="m-handle"></div>
+    <div class="m-title" id="wcMoTitle">🔧 แจ้งซ่อมรถเข็น</div>
+    <div class="m-sub" id="wcMoSub"></div>
+    <div class="m-info" id="wcMoInfo"></div>
+    <input class="sbox-inp" id="wcNote" placeholder="อาการ เช่น ล้อหลวม / เบรกไม่อยู่ / ที่วางเท้าหัก">
+    <div class="m-btns">
+      <button class="bbtn b-cancel" onclick="closeWcMo()">ยกเลิก</button>
+      <button class="bbtn b-stop" id="wcMoOk" onclick="confirmWc()">แจ้งซ่อม 🔧</button>
+    </div>
+  </div>
+</div>
+
 <!-- HEADER -->
 <div class="hdr">
   <div>
@@ -317,10 +337,10 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 <!-- HOME -->
 <div class="page active" id="pg-home">
   <div class="stats">
-    <div class="sbox"><div class="snum cb">67</div><div class="stxt">ทั้งหมด</div></div>
     <div class="sbox"><div class="snum cg" id="sF">67</div><div class="stxt">ว่าง</div></div>
     <div class="sbox"><div class="snum cy" id="sU">0</div><div class="stxt">ใช้งาน</div></div>
-    <div class="sbox"><div class="snum cr" id="sT">0</div><div class="stxt">วันนี้</div></div>
+    <div class="sbox"><div class="snum cr" id="sR">0</div><div class="stxt">🔧 ซ่อม</div></div>
+    <div class="sbox"><div class="snum cb" id="sT">0</div><div class="stxt">วันนี้</div></div>
   </div>
   <!-- NEXT IN QUEUE -->
   <div class="q-banner" id="qBanner" style="display:none">
@@ -407,9 +427,11 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
     <button class="fc" onclick="setF('พับขา',this)">พับขา</button>
     <button class="fc" onclick="setF('Extra',this)">Extra</button>
     <button class="fc" onclick="setF('free',this)">🟢 ว่าง</button>
+    <button class="fc" onclick="setF('repair',this)">🔧 ซ่อม</button>
   </div>
   <input class="sbox-inp" id="wcQ" placeholder="🔍 พิมพ์เลขรถเข็น เช่น 15" inputmode="numeric" oninput="renderWC()">
   <div class="wc-grid" id="wcGrid"></div>
+  <div class="hint">💡 กดค้างที่คัน = แจ้งซ่อม / แจ้งซ่อมเสร็จ</div>
   <button class="obtn" onclick="go(1)">← เปลี่ยนพนักงาน</button>
 </div>
 
@@ -650,6 +672,7 @@ const WC=[
 let selS=null, selW=null, selFlight=null, selCase=null;
 let trips={}, log=[], cnt=1, stopCtrl=null, wcF='all';
 let queueList=[], queueLoadedAt=0, queueMode=false;
+let wcRepair={}, wcMoCtrl=null, wcLongT=null;   // สถานะซ่อม (ctrl → {note,by,since})
 let dutyStaff=[], onlyDuty=true;   // รายชื่อที่มาทำงานวันนี้ (จาก STAFF RECORD ในชีท)
 const SHIFTS=['A','B','C'];
 let curShift=localStorage.getItem('wcShift')||'A';
@@ -691,7 +714,7 @@ function go(s){
   else if(s===2){
     if(!selS){toast('เลือกพนักงานก่อนนะ','terr');go(1);return;}
     document.getElementById('s2sub').textContent=selS.nick+' — กดคันที่จะใช้';
-    document.getElementById('wcQ').value='';renderWC();
+    document.getElementById('wcQ').value='';renderWC();loadWcStatus();
   }
   else if(s===3){
     if(!selW){toast('เลือกรถเข็นก่อนนะ','terr');go(2);return;}
@@ -769,27 +792,101 @@ function pickS(id,sheetName){
 function renderWC(){
   const q=(document.getElementById('wcQ').value||'').replace(/\D/g,'');
   let list=WC;
-  if(wcF!=='all'&&wcF!=='free')list=list.filter(w=>w.type===wcF);
-  if(wcF==='free')list=list.filter(w=>!trips[w.ctrl]);
+  if(wcF==='repair')list=list.filter(w=>wcRepair[w.ctrl]);
+  else if(wcF==='free')list=list.filter(w=>!trips[w.ctrl]&&!wcRepair[w.ctrl]);
+  else if(wcF!=='all')list=list.filter(w=>w.type===wcF);
   if(q)list=list.filter(w=>w.no.replace('WH-','').startsWith(q));
   const g=document.getElementById('wcGrid');
-  if(!list.length){g.innerHTML='<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--text3)">ไม่พบ</div>';return;}
+  if(!list.length){g.innerHTML='<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--text3)">'+(wcF==='repair'?'ไม่มีคันที่แจ้งซ่อม 👍':'ไม่พบ')+'</div>';return;}
   g.innerHTML=list.map(w=>{
+    const fix=wcRepair[w.ctrl];
     const t=trips[w.ctrl];
     const el=t?Math.floor((Date.now()-t.startMs)/60000):null;
-    const state=t?(el>60?'overdue':'inuse'):'available';
+    const state=fix?'repair':(t?(el>60?'overdue':'inuse'):'available');
     const sel=selW&&selW.ctrl===w.ctrl;
-    return `<div class="wi ${state} ${sel?'sel':''}" onclick="pickW('${w.ctrl}')">
+    return `<div class="wi ${state} ${sel?'sel':''}" onclick="pickW('${w.ctrl}')"
+      oncontextmenu="event.preventDefault();openWcMo('${w.ctrl}')"
+      ontouchstart="wcHold('${w.ctrl}')" ontouchend="wcRelease()" ontouchmove="wcRelease()"
+      onmousedown="wcHold('${w.ctrl}')" onmouseup="wcRelease()" onmouseleave="wcRelease()">
       <div class="w-dot"></div>
       <div class="w-num">${w.no.replace('WH-','')}</div>
       <div class="w-type">${stype(w.type)}</div>
-      ${t?`<div class="w-t">${el}น.</div>`:''}
+      ${fix?'<div class="w-fix">🔧 ซ่อม</div>':(t?`<div class="w-t">${el}น.</div>`:'')}
     </div>`;
   }).join('');
 }
+
+// ── กดค้าง 600ms = เปิดหน้าต่างแจ้งซ่อม ──
+function wcHold(ctrl){clearTimeout(wcLongT);wcLongT=setTimeout(()=>{wcLongT=null;openWcMo(ctrl);},600);}
+function wcRelease(){clearTimeout(wcLongT);wcLongT=null;}
+
 function stype(t){return{ใหญ่:'ใหญ่',เคบิ้น:'เคบิ้น',กลาง:'กลาง',พับขา:'พับขา',Extra:'EXTRA'}[t]||t;}
 function setF(f,el){wcF=f;document.querySelectorAll('.fc').forEach(c=>c.classList.remove('act'));el.classList.add('act');renderWC();}
-function pickW(ctrl){if(trips[ctrl]){openStop(ctrl);return;}selW=WC.find(w=>w.ctrl===ctrl);renderWC();setTimeout(()=>go(3),180);}
+function pickW(ctrl){
+  if(wcLongT===null&&document.getElementById('wcMo').classList.contains('show'))return;
+  if(wcRepair[ctrl]){openWcMo(ctrl);return;}
+  if(trips[ctrl]){openStop(ctrl);return;}
+  selW=WC.find(w=>w.ctrl===ctrl);renderWC();setTimeout(()=>go(3),180);
+}
+
+// ══════════════════════════════════════════════════════════
+// WC REPAIR — แจ้งซ่อม / ซ่อมเสร็จ (sync กับ sheet WCStatus)
+// ══════════════════════════════════════════════════════════
+async function loadWcStatus(){
+  try{
+    const r=await fetch(GAS_URL+'?action=wcstatus');
+    const data=await r.json();
+    if(data.ok&&data.repair){
+      wcRepair={};
+      data.repair.forEach(w=>{wcRepair[w.ctrl]=w;});
+      if(document.getElementById('pg-s2').classList.contains('active'))renderWC();
+      updateStats();
+    }
+  }catch(e){console.warn('wcstatus:',e);}
+}
+
+function openWcMo(ctrl){
+  wcRelease();
+  const w=WC.find(x=>x.ctrl===ctrl);if(!w)return;
+  wcMoCtrl=ctrl;
+  const fix=wcRepair[ctrl];
+  const t=trips[ctrl];
+  document.getElementById('wcMoTitle').textContent=fix?'✅ แจ้งซ่อมเสร็จ?':'🔧 แจ้งซ่อมรถเข็น?';
+  document.getElementById('wcMoSub').textContent=fix?'ให้ '+ctrl+' กลับมาใช้งานได้':'กันไม่ให้ '+ctrl+' ถูกเลือกใช้งาน';
+  document.getElementById('wcMoInfo').innerHTML=`
+    <div class="m-row"><span class="ml">🦽 รถเข็น</span><span class="mv" style="color:var(--blue)">${ctrl}</span></div>
+    <div class="m-row"><span class="ml">📋 ประเภท</span><span class="mv">${w.type}</span></div>
+    ${fix?`<div class="m-row"><span class="ml">🔧 อาการ</span><span class="mv" style="color:var(--red)">${fix.note||'—'}</span></div>
+    <div class="m-row"><span class="ml">🕐 แจ้งเมื่อ</span><span class="mv">${fix.since||'—'}</span></div>
+    ${fix.by?`<div class="m-row"><span class="ml">👤 แจ้งโดย</span><span class="mv">${fix.by}</span></div>`:''}`
+    :(t?`<div class="m-row"><span class="ml">⚠ สถานะ</span><span class="mv" style="color:var(--yellow)">กำลังใช้งานโดย ${t.snick}</span></div>`:'')}`;
+  const note=document.getElementById('wcNote');
+  note.style.display=fix?'none':'block';
+  note.value='';
+  const ok=document.getElementById('wcMoOk');
+  ok.textContent=fix?'ซ่อมเสร็จ ✓':'แจ้งซ่อม 🔧';
+  ok.className='bbtn '+(fix?'b-start':'b-stop');
+  document.getElementById('wcMo').classList.add('show');
+}
+function closeWcMo(){document.getElementById('wcMo').classList.remove('show');wcMoCtrl=null;}
+
+async function confirmWc(){
+  if(!wcMoCtrl)return;
+  const ctrl=wcMoCtrl;
+  const wasFix=!!wcRepair[ctrl];
+  const note=(document.getElementById('wcNote').value||'').trim();
+  const by=selS?selS.nick:'';
+  if(wasFix)delete wcRepair[ctrl];
+  else wcRepair[ctrl]={ctrl,note,by,since:new Date().toLocaleString('th-TH')};
+  closeWcMo();renderWC();updateStats();
+  toast(wasFix?('✅ '+ctrl+' ใช้งานได้แล้ว'):('🔧 '+ctrl+' แจ้งซ่อมแล้ว'),wasFix?'tok':'terr');
+  try{
+    const r=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'wc_set',wc:{ctrl,status:wasFix?'ใช้งานได้':'ซ่อม',note,by}})});
+    const data=await r.json();
+    if(data.ok&&data.repair){wcRepair={};data.repair.forEach(w=>{wcRepair[w.ctrl]=w;});renderWC();updateStats();}
+  }catch(e){console.warn('wc_set:',e);toast('บันทึกสถานะซ่อมไม่สำเร็จ','terr');}
+}
 
 // ══════════════════════════════════════════════════════════
 // PORTER QUEUE — คิวรับเคสอัตโนมัติ (sync กับ sheet "Queue")
@@ -1175,6 +1272,7 @@ function startService(){
   clearInterval(window._ct);
   const ctrl=selW.ctrl;
   if(trips[ctrl]){toast('รถเข็นนี้ถูกใช้งานอยู่','terr');return;}
+  if(wcRepair[ctrl]){toast('🔧 รถเข็นนี้แจ้งซ่อมอยู่ — เลือกคันอื่น','terr');go(2);return;}
   const now=new Date();
   const trip={
     id:'TRP-'+now.toISOString().slice(0,10).replace(/-/g,'')+'-'+String(cnt++).padStart(3,'0'),
@@ -1311,8 +1409,10 @@ function renderLog(){
 }
 function updateStats(){
   const u=Object.keys(trips).length;
-  document.getElementById('sF').textContent=67-u;
+  const r=Object.keys(wcRepair).filter(c=>!trips[c]).length;
+  document.getElementById('sF').textContent=WC.length-u-r;
   document.getElementById('sU').textContent=u;
+  const el=document.getElementById('sR');if(el)el.textContent=r;
   document.getElementById('sT').textContent=log.filter(t=>t.status==='done').length+u;
 }
 
@@ -1356,6 +1456,7 @@ function toast(m,c=''){const t=document.getElementById('toast');t.textContent=m;
 updateStats();
 loadQueue();
 loadCases();
+loadWcStatus();
 </script>
 </body>
 </html>

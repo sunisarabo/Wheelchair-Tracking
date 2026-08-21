@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════
-// WC TRACKER — Google Apps Script Backend  v3.3
+// WC TRACKER — Google Apps Script Backend  v3.4
 // Phuket Airport · Ground Handling
 // ═══════════════════════════════════════════════════════════════════
 //
@@ -46,6 +46,10 @@ const PORTER_WRITEBACK = true;
 const LOG_SHEET   = 'TripLog';
 const STAT_SHEET  = 'DailySummary';
 const QUEUE_SHEET = 'Queue';
+const WC_SHEET    = 'WCStatus';
+
+const WC_HEADERS = ['รถเข็น','สถานะ','อาการ/หมายเหตุ','แจ้งโดย','แจ้งเมื่อ','อัปเดตล่าสุด'];
+// ↑ สถานะ: 'ซ่อม' = ใช้งานไม่ได้ · 'ใช้งานได้' = ซ่อมเสร็จ/กลับมาใช้ได้
 
 const QUEUE_HEADERS = ['วันที่','ลำดับ','รหัสพนักงาน','ชื่อเล่น','กะ','สถานะ','Trips วันนี้','อัปเดต'];
 // ↑ "ลำดับ" ใช้เป็นตัวตัดสินเมื่อจำนวนเคสเท่ากัน (คนที่ว่างก่อน/เข้าคิวก่อนขึ้นก่อน)
@@ -137,6 +141,12 @@ function doGet(e) {
     catch (err) { return jsonErr('staff error: ' + err.message); }
   }
 
+  // API: สถานะรถเข็น (เฉพาะคันที่แจ้งซ่อมอยู่)
+  if (action === 'wcstatus') {
+    try { return jsonOk({ repair: getWCRepair() }); }
+    catch (err) { return jsonErr('wcstatus error: ' + err.message); }
+  }
+
   // API: today's porter queue
   if (action === 'queue') {
     try { return jsonOk({ queue: getQueue() }); }
@@ -145,7 +155,7 @@ function doGet(e) {
 
   // API: health check
   if (action === 'health') {
-    return jsonOk({ app: 'WC Tracker HKT', version: '3.3', time: new Date().toISOString() });
+    return jsonOk({ app: 'WC Tracker HKT', version: '3.4', time: new Date().toISOString() });
   }
 
   // Default: serve the web-app UI
@@ -167,6 +177,7 @@ function doPost(e) {
     if      (action === 'start')     return jsonOk(handleStart(trip));
     else if (action === 'end')       return jsonOk(handleEnd(trip));
     else if (action === 'queue_set') return jsonOk({ queue: setQueue(data.queue || []) });
+    else if (action === 'wc_set')     return jsonOk({ repair: setWCStatus(data.wc || {}) });
     else                              return jsonErr('Unknown action: ' + action);
 
   } catch (err) {
@@ -551,6 +562,73 @@ function markCase(trip, phase, timeStr) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// WC STATUS — แจ้งซ่อม / ซ่อมเสร็จ (sheet "WCStatus")
+// ═══════════════════════════════════════════════════════════════════
+// - แจ้งซ่อม  : รถคันนั้นจะถูกกันออกจากการเลือกใช้งานในแอปทุกเครื่อง
+// - ซ่อมเสร็จ : กลับมาใช้งานได้ (เก็บแถวไว้เป็นประวัติ)
+
+function getWCSheet() {
+  return getOrCreateSheet(SpreadsheetApp.getActiveSpreadsheet(), WC_SHEET, WC_HEADERS);
+}
+
+// คืนเฉพาะคันที่ "ซ่อม" อยู่ตอนนี้
+function getWCRepair() {
+  const sh   = getWCSheet();
+  const data = sh.getDataRange().getValues();
+  const list = [];
+  for (let r = 1; r < data.length; r++) {
+    if (String(data[r][1] || '').trim() !== 'ซ่อม') continue;
+    list.push({
+      ctrl:  String(data[r][0] || '').trim(),
+      note:  String(data[r][2] || '').trim(),
+      by:    String(data[r][3] || '').trim(),
+      since: String(data[r][4] || '').trim()
+    });
+  }
+  Logger.log('WC under repair: ' + list.length);
+  return list;
+}
+
+// wc = { ctrl, status: 'ซ่อม' | 'ใช้งานได้', note, by }
+function setWCStatus(wc) {
+  if (!wc || !wc.ctrl) throw new Error('No wc data');
+
+  const sh     = getWCSheet();
+  const now    = new Date();
+  const stamp  = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm:ss');
+  const status = (wc.status === 'ซ่อม') ? 'ซ่อม' : 'ใช้งานได้';
+  const data   = sh.getDataRange().getValues();
+
+  let row = -1;
+  for (let r = 1; r < data.length; r++) {
+    if (String(data[r][0]).trim() === String(wc.ctrl).trim()) { row = r + 1; break; }
+  }
+
+  if (row > 0) {
+    sh.getRange(row, 2).setValue(status);
+    sh.getRange(row, 3).setValue(wc.note || '');
+    sh.getRange(row, 4).setValue(wc.by || '');
+    if (status === 'ซ่อม') sh.getRange(row, 5).setValue(stamp);   // แจ้งเมื่อ
+    sh.getRange(row, 6).setValue(stamp);
+    sh.getRange(row, 1, 1, WC_HEADERS.length)
+      .setBackground(status === 'ซ่อม' ? '#fee2e2' : '#dcfce7');
+  } else {
+    sh.appendRow([wc.ctrl, status, wc.note || '', wc.by || '', stamp, stamp]);
+    sh.getRange(sh.getLastRow(), 1, 1, WC_HEADERS.length)
+      .setBackground(status === 'ซ่อม' ? '#fee2e2' : '#dcfce7');
+  }
+
+  Logger.log('WC ' + wc.ctrl + ' → ' + status + (wc.note ? ' (' + wc.note + ')' : ''));
+  return getWCRepair();
+}
+
+// เช็คว่ารถคันนี้แจ้งซ่อมอยู่ไหม
+function isWCUnderRepair(ctrl) {
+  if (!ctrl) return false;
+  return getWCRepair().some(function (w) { return w.ctrl === String(ctrl).trim(); });
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // PORTER QUEUE — คิวรับเคสอัตโนมัติ (เก็บใน sheet "Queue" — ทุกเครื่องเห็นตรงกัน)
 // ═══════════════════════════════════════════════════════════════════
 // การทำงาน:
@@ -672,6 +750,7 @@ function queueOnEnd(sid) {
 // ═══════════════════════════════════════════════════════════════════
 function handleStart(trip) {
   if (!trip || !trip.id) throw new Error('No trip data');
+  if (isWCUnderRepair(trip.ctrl)) throw new Error('รถเข็น ' + trip.ctrl + ' แจ้งซ่อมอยู่ — เลือกคันอื่น');
 
   const ss  = SpreadsheetApp.getActiveSpreadsheet();
   const log = getOrCreateSheet(ss, LOG_SHEET, LOG_HEADERS);
@@ -882,6 +961,7 @@ function setupSheets() {
     'วันที่','Trips ทั้งหมด','Trips เสร็จ','เฉลี่ย (น.)','นานสุด (น.)','สั้นสุด (น.)','> 60 น.','อัปเดต'
   ]);
   getOrCreateSheet(ss, QUEUE_SHEET, QUEUE_HEADERS);
+  getOrCreateSheet(ss, WC_SHEET, WC_HEADERS);
   ss.rename('WC Tracker Log — HKT Ground Handling');
   SpreadsheetApp.getUi().alert(
     '✅ ตั้งค่าเสร็จ!\n\n' +
