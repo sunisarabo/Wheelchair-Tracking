@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════
-// WC TRACKER — Google Apps Script Backend  v3.2
+// WC TRACKER — Google Apps Script Backend  v3.3
 // Phuket Airport · Ground Handling
 // ═══════════════════════════════════════════════════════════════════
 //
@@ -97,6 +97,11 @@ const PCOL = {
   REMARK:       22,
 };
 
+// ── COLUMN MAPPING (PORTER SUMMARY — บล็อก STAFF RECORD ด้านขวา) ─────
+// Z(25)=NO. | AA(26)=SKED | AB(27)=NAME | AC(28)=CASE SUMMARY
+// = รายชื่อพนักงานที่ "มาทำงานวันนั้น" ที่ LP/OCC กรอกไว้
+const SCOL = { NO: 25, SKED: 26, NAME: 27, CASES: 28 };
+
 // ── HEADERS ─────────────────────────────────────────────────────────
 const LOG_HEADERS = [
   'Trip ID','วันที่','รถเข็น','ประเภท WC',
@@ -126,6 +131,12 @@ function doGet(e) {
     catch (err) { return jsonErr('cases error: ' + err.message); }
   }
 
+  // API: today's on-duty staff (STAFF RECORD block)
+  if (action === 'staff') {
+    try { return jsonOk(getTodayStaff()); }
+    catch (err) { return jsonErr('staff error: ' + err.message); }
+  }
+
   // API: today's porter queue
   if (action === 'queue') {
     try { return jsonOk({ queue: getQueue() }); }
@@ -134,7 +145,7 @@ function doGet(e) {
 
   // API: health check
   if (action === 'health') {
-    return jsonOk({ app: 'WC Tracker HKT', version: '3.2', time: new Date().toISOString() });
+    return jsonOk({ app: 'WC Tracker HKT', version: '3.3', time: new Date().toISOString() });
   }
 
   // Default: serve the web-app UI
@@ -415,7 +426,67 @@ function getTodayCases() {
   }
 
   Logger.log('Cases found: ' + cases.length + ' | tab: ' + sheet.getName());
-  return { cases: cases, tab: sheet.getName() };
+  return { cases: cases, staff: readStaffRecord(sheet), tab: sheet.getName() };
+}
+
+// ── รายชื่อพนักงานที่มาทำงานวันนี้ (บล็อก STAFF RECORD) ──
+function getTodayStaff() {
+  const today = new Date();
+  const ss    = getPorterSpreadsheet(today);
+  const sheet = findPorterDayTab(ss, today);
+  if (!sheet) {
+    Logger.log('Staff: day tab not found for ' + today.toDateString());
+    return { staff: [], tab: null };
+  }
+  return { staff: readStaffRecord(sheet), tab: sheet.getName() };
+}
+
+// อ่านบล็อก STAFF RECORD จาก tab รายวัน
+// หาหัวตาราง "NAME" (คู่กับ "NO."/"SKED") เองใน 12 แถวแรก — ถ้าไม่เจอใช้ SCOL
+function readStaffRecord(sheet) {
+  const data = sheet.getDataRange().getValues();
+  let colName = SCOL.NAME, colNo = SCOL.NO, colSked = SCOL.SKED, colCases = SCOL.CASES;
+  let headRow = -1;
+
+  for (let r = 0; r < Math.min(12, data.length); r++) {
+    for (let c = 0; c < data[r].length; c++) {
+      if (String(data[r][c] || '').trim().toUpperCase() === 'NAME') {
+        colName  = c;
+        colNo    = c - 2;
+        colSked  = c - 1;
+        colCases = c + 1;
+        headRow  = r;
+        break;
+      }
+    }
+    if (headRow >= 0) break;
+  }
+
+  const staff = [];
+  const seen  = {};
+  for (let r = (headRow >= 0 ? headRow + 1 : 1); r < data.length; r++) {
+    const row  = data[r];
+    const name = String(row[colName] || '').trim();
+    if (!name) continue;
+    if (name.toUpperCase() === 'NAME') continue;
+    if (seen[name]) continue;
+
+    const noRaw = colNo >= 0 ? row[colNo] : '';
+    const no    = (typeof noRaw === 'number') ? noRaw : parseInt(noRaw, 10);
+    if (!no || isNaN(no)) continue;        // แถวเคสจริงต้องมีเลข NO.
+
+    seen[name] = true;
+    staff.push({
+      no:    no,
+      name:  name,
+      sked:  colSked >= 0 ? String(row[colSked] || '').trim() : '',
+      cases: Number(row[colCases]) || 0
+    });
+  }
+
+  staff.sort(function (a, b) { return a.no - b.no; });
+  Logger.log('Staff on duty: ' + staff.length);
+  return staff;
 }
 
 // ── เขียนเวลา รับเคส / ส่งเคส กลับไปที่ Porter Summary ──
@@ -847,6 +918,17 @@ function testFlights() {
     Logger.log('Total: ' + flights.length);
     flights.slice(0, 5).forEach(f => Logger.log(JSON.stringify(f)));
   } catch(e) {
+    Logger.log('ERROR: ' + e.message);
+  }
+}
+
+function testStaff() {
+  Logger.log('=== TEST STAFF ON DUTY ===');
+  try {
+    const res = getTodayStaff();
+    Logger.log('Tab: ' + res.tab + ' | Total: ' + res.staff.length);
+    res.staff.forEach(function (s) { Logger.log(s.no + '. ' + s.name + ' (' + s.cases + ' เคส)'); });
+  } catch (e) {
     Logger.log('ERROR: ' + e.message);
   }
 }

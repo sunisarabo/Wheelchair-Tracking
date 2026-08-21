@@ -197,6 +197,22 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 .dmid{background:var(--yellow-lt);color:var(--yellow)}
 .dlong{background:var(--red-lt);color:var(--red)}
 
+/* LP ASSIGN BOARD */
+.lp{background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:7px;box-shadow:var(--sh);
+  display:flex;align-items:center;gap:9px;border-left:4px solid var(--gray-lt);cursor:pointer}
+.lp:active{transform:scale(0.99)}
+.lp.wait{border-left-color:var(--blue)}
+.lp.doing{border-left-color:var(--yellow);background:var(--yellow-lt)}
+.lp.done{border-left-color:var(--green);opacity:.6}
+.lp-body{flex:1;min-width:0}
+.lp-top{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600}
+.lp-porter{font-size:12px;font-weight:700;margin-top:1px}
+.lp-meta{font-size:10px;color:var(--gray);margin-top:1px}
+.lp-st{font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;white-space:nowrap}
+.lp-w{background:var(--blue-lt);color:var(--blue)}
+.lp-d{background:var(--yellow-lt);color:var(--yellow)}
+.lp-f{background:var(--green-lt);color:var(--green)}
+
 /* QUEUE */
 .q-banner{background:linear-gradient(135deg,#eff6ff,#dbeafe);border:2px solid #bfdbfe;
   border-radius:14px;padding:13px 14px;margin-bottom:14px;box-shadow:var(--sh)}
@@ -319,6 +335,14 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
     <button class="bbtn b-start" style="margin-top:10px" onclick="startQueueFlow()">▶ รับเคสตามคิว (อัตโนมัติ)</button>
   </div>
 
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div class="sec" style="margin:0">📋 เคสที่ LP assign วันนี้</div>
+    <button onclick="loadCases(true)" style="background:var(--blue-lt);color:var(--blue);border:none;
+      border-radius:8px;padding:5px 11px;font-family:Sarabun,sans-serif;font-size:11px;
+      font-weight:700;cursor:pointer">↻ รีเฟรช</button>
+  </div>
+  <div id="lpBoard" style="margin-bottom:6px"><div class="fl-loading">⏳ กำลังโหลดเคส...</div></div>
+
   <div class="sec">⏱ กำลังให้บริการ</div>
   <div id="activeBoard"><div class="empty"><div style="font-size:42px;margin-bottom:8px">🏁</div><div style="font-size:14px">ยังไม่มีการให้บริการ</div></div></div>
   <div style="margin-top:13px">
@@ -335,7 +359,8 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
   <div class="frow" id="qShiftRow"></div>
   <div class="sync-bar sync-idle" id="qStatus">⏳ กำลังโหลดคิว...</div>
   <div id="queueList"></div>
-  <button class="bbtn b-new" style="margin-top:10px;font-size:15px" onclick="toggleQAdd()">➕ เพิ่มพนักงานเข้าคิว</button>
+  <button class="bbtn b-new" style="margin-top:10px;font-size:15px" onclick="fillQueueFromDuty()">👥 เติมคิวจากรายชื่อวันนี้</button>
+  <button class="obtn" onclick="toggleQAdd()">➕ เพิ่มพนักงานเข้าคิวเอง</button>
   <div id="qAddBox" style="display:none;margin-top:10px">
     <input class="sbox-inp" id="qStaffQ" placeholder="🔍 ค้นหาชื่อหรือรหัส..." oninput="renderQAddGrid(this.value)">
     <div class="staff-grid" id="qAddGrid" style="max-height:40vh"></div>
@@ -355,6 +380,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
     <button class="back-btn" onclick="go(0)">←</button>
     <div><div class="shdr-title">ขั้นตอนที่ 1</div><div class="shdr-sub">กดชื่อพนักงานที่จะให้บริการ</div></div>
   </div>
+  <div class="frow" id="dutyRow"></div>
   <input class="sbox-inp" id="staffQ" placeholder="🔍 ค้นหาชื่อหรือรหัส เช่น สุทิน หรือ 2101..." oninput="renderStaff(this.value)">
   <div class="staff-grid" id="staffGrid"></div>
   <button class="obtn" onclick="go(0)">← กลับหน้าหลัก</button>
@@ -541,6 +567,44 @@ const STAFF=[
 ];
 
 // ══════════════════════════════════════════════════════════
+// ROMAN — ชื่ออังกฤษที่ใช้ในไฟล์ Porter Summary (ไว้จับคู่กับรายชื่อไทย)
+// ถ้าชีทสะกดต่างไป แก้ตรงนี้ได้เลย (จับคู่แบบไม่สนตัวพิมพ์/จุด/ช่องว่าง)
+// ══════════════════════════════════════════════════════════
+const ROMAN={
+ '1900266':'Preecha','2101042':'Suthin','2101044':'Madereh','2101045':'Wutichai K.',
+ '2101286':'Amun','2101305':'Suwan','2101306':'Jatuphon','2101314':'Worawut',
+ '2101400':'Wutichai S.','2101401':'Tuankareem','2201447':'Akkachai','2201448':'Natthapong',
+ '2201452':'Asmee','2201528':'Roengrit','2201837':'Adisorn','2201923':'Dueramea',
+ '2201924':'Muhamdee','2201932':'Ameen','2201956':'Athippong','2202009':'Ratchapon',
+ '2202113':'Piyawat','2202114':'Atthakorn','2202282':'Atthachai','2302546':'Sutha',
+ '2302548':'Warut','2302549':'Abdulsahed','2302859':'Permpol','2303228':'Arbukoree',
+ '2303229':'Siddik','2304547':'Thanathit','2304628':'Chatchai','2304684':'Sittichai',
+ '2304687':'Aslan','2304830':'Nawapon','2404853':'Krit','2404854':'Arrisan',
+ '2404880':'Todsapon','2404881':'Chawanwit','2404911':'Irfan','2404912':'Arleeya',
+ '2405006':'Suwardee','2405007':'Taufi','2405009':'Theerapong','2405010':'Kittipat',
+ '2405074':'Ratchanon','2405118':'Sarawut','2405120':'Paisan','2405121':'Ahamasaodee',
+ '2405163':'Nattapon','2405164':'Keerati','2405697':'Satakun','2406034':'Usman',
+ '2506223':'Nattakan','2506224':'Phuwanai','2506806':'Hafizi','2506807':'Peerapat',
+ '2506812':'Mustakim','2506813':'Theerasak','2506814':'Adunsak','2506815':'Teerasak',
+ '2506817':'Pongsathorn','2506819':'Adeelan','2506820':'Waranyu','2506822':'Sulaiman',
+ '2506824':'Thanawut','2506831':'Nattawut','2506833':'Maleekee','2506836':'E-LIYAS',
+ '2506843':'Chalermkiat','2506844':'Piyatat','2506845':'Rachen','2506846':'Supakorn',
+ '2506849':'Jarukit','2506850':'Jeerawat','2506860':'Fais','2506861':'Jatupong',
+};
+function normName(x){return String(x||'').toLowerCase().replace(/[^a-z0-9\u0e00-\u0e7f]/g,'');}
+// หา staff จากชื่อในชีท (อังกฤษ) — คืน null ถ้าจับคู่ไม่ได้
+function staffByName(name){
+  const n=normName(name);
+  if(!n)return null;
+  for(const s of STAFF){
+    const r=normName(ROMAN[s.id]);
+    if(r&&(r===n||n.startsWith(r)||r.startsWith(n)))return s;
+    if(normName(s.nick)===n)return s;
+  }
+  return null;
+}
+
+// ══════════════════════════════════════════════════════════
 // WC MASTER — 67 คัน
 // ══════════════════════════════════════════════════════════
 const WC=[
@@ -586,6 +650,7 @@ const WC=[
 let selS=null, selW=null, selFlight=null, selCase=null;
 let trips={}, log=[], cnt=1, stopCtrl=null, wcF='all';
 let queueList=[], queueLoadedAt=0, queueMode=false;
+let dutyStaff=[], onlyDuty=true;   // รายชื่อที่มาทำงานวันนี้ (จาก STAFF RECORD ในชีท)
 const SHIFTS=['A','B','C'];
 let curShift=localStorage.getItem('wcShift')||'A';
 if(!SHIFTS.includes(curShift))curShift='A';
@@ -612,7 +677,7 @@ function showMain(id,el){
   document.querySelectorAll('.bn').forEach(b=>b.classList.remove('active'));
   if(el)el.classList.add('active');
   if(id==='log')renderLog();
-  if(id==='home'){renderBoard();loadQueue();}
+  if(id==='home'){renderBoard();loadQueue();loadCases();}
   if(id==='queue')loadQueue(true);
 }
 function go(s){
@@ -621,7 +686,7 @@ function go(s){
   document.getElementById('bn0').classList.add('active');
   const pages=['pg-home','pg-s1','pg-s2','pg-s3'];
   document.getElementById(pages[s]).classList.add('active');
-  if(s===0){renderBoard();renderQueueBanner();}
+  if(s===0){renderBoard();renderQueueBanner();renderLPBoard();}
   else if(s===1){queueMode=false;renderStaff('');document.getElementById('staffQ').value='';}
   else if(s===2){
     if(!selS){toast('เลือกพนักงานก่อนนะ','terr');go(1);return;}
@@ -646,23 +711,57 @@ function go(s){
 // ══════════════════════════════════════════════════════════
 // STAFF GRID
 // ══════════════════════════════════════════════════════════
+function dutyChipsHTML(){
+  return `<button class="fc ${onlyDuty?'act':''}" onclick="setDuty(true)">👥 มาทำงานวันนี้${dutyStaff.length?' ('+dutyStaff.length+')':''}</button>
+    <button class="fc ${onlyDuty?'':'act'}" onclick="setDuty(false)">รายชื่อทั้งหมด</button>`;
+}
+function setDuty(v){
+  onlyDuty=v;
+  const q=document.getElementById('staffQ');
+  renderStaff(q?q.value:'');
+  const box=document.getElementById('qAddBox');
+  if(box&&box.style.display!=='none')renderQAddGrid(document.getElementById('qStaffQ').value);
+}
+
+// รายชื่อพนักงานที่มาทำงานวันนี้ (จับคู่ชื่อในชีท → STAFF)
+// คนที่จับคู่ไม่ได้จะคืนเป็น entry ชั่วคราว (sid ว่าง) เพื่อไม่ให้ตกหล่น
+function dutyStaffList(){
+  const out=[],seen=new Set();
+  dutyStaff.forEach(d=>{
+    const m=staffByName(d.name);
+    if(m){if(!seen.has(m.id)){seen.add(m.id);out.push(Object.assign({},m,{sheetName:d.name,sheetCases:d.cases,sked:d.sked}));}}
+    else out.push({id:'',name:d.name,nick:d.name,sheetName:d.name,sheetCases:d.cases,sked:d.sked,unmatched:true});
+  });
+  return out;
+}
+function baseStaffList(){return (onlyDuty&&dutyStaff.length)?dutyStaffList():STAFF;}
+
 function renderStaff(q){
   q=(q||'').toLowerCase();
-  let list=q?STAFF.filter(s=>s.name.includes(q)||s.id.includes(q)||s.nick.includes(q)):STAFF;
+  const dr=document.getElementById('dutyRow');
+  if(dr)dr.innerHTML=dutyChipsHTML();
+  let list=baseStaffList();
+  if(q)list=list.filter(s=>(s.name||'').toLowerCase().includes(q)||(s.id||'').includes(q)||(s.nick||'').toLowerCase().includes(q)||normName(s.sheetName).includes(normName(q)));
   const g=document.getElementById('staffGrid');
-  if(!list.length){g.innerHTML='<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--text3)">ไม่พบพนักงาน</div>';return;}
+  if(!list.length){g.innerHTML='<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--text3)">'+(onlyDuty&&!dutyStaff.length?'ยังไม่มีรายชื่อวันนี้ในชีท<br>กด "รายชื่อทั้งหมด"':'ไม่พบพนักงาน')+'</div>';return;}
   g.innerHTML=list.map(s=>{
-    const c=log.filter(t=>t.sid===s.id).length+Object.values(trips).filter(t=>t.sid===s.id).length;
-    const sel=selS&&selS.id===s.id;
-    return `<div class="sc ${sel?'sel':''}" onclick="pickS('${s.id}')">
+    const c=s.id?(log.filter(t=>t.sid===s.id).length+Object.values(trips).filter(t=>t.sid===s.id).length):0;
+    const sel=selS&&s.id&&selS.id===s.id;
+    const cs=(s.sheetCases||0);
+    return `<div class="sc ${sel?'sel':''}" onclick="pickS('${s.id}','${(s.sheetName||'').replace(/'/g,"")}')">
       <div class="s-av">👷</div>
       <div class="s-nick">${s.nick}</div>
-      <div class="s-id">${s.id}</div>
-      ${c?`<div class="s-trip">วันนี้ ${c} trip</div>`:''}
+      <div class="s-id">${s.unmatched?'⚠ ไม่พบรหัส':s.id}</div>
+      ${cs?`<div class="s-trip">ชีท ${cs} เคส</div>`:(c?`<div class="s-trip">วันนี้ ${c} trip</div>`:'')}
     </div>`;
   }).join('');
 }
-function pickS(id){selS=STAFF.find(s=>s.id===id);renderStaff(document.getElementById('staffQ').value);setTimeout(()=>go(2),180);}
+function pickS(id,sheetName){
+  selS=id?STAFF.find(s=>s.id===id):{id:'',nick:sheetName||'—',name:sheetName||''};
+  if(!selS)return;
+  renderStaff(document.getElementById('staffQ').value);
+  setTimeout(()=>go(2),180);
+}
 
 // ══════════════════════════════════════════════════════════
 // WC GRID
@@ -791,8 +890,8 @@ function toggleQAdd(){
 function renderQAddGrid(q){
   q=(q||'').toLowerCase();
   const inQ=new Set(queueList.map(x=>x.sid));
-  let list=STAFF.filter(s=>!inQ.has(s.id));
-  if(q)list=list.filter(s=>s.name.includes(q)||s.id.includes(q)||s.nick.includes(q));
+  let list=baseStaffList().filter(s=>s.id&&!inQ.has(s.id));
+  if(q)list=list.filter(s=>(s.name||'').toLowerCase().includes(q)||(s.id||'').includes(q)||(s.nick||'').toLowerCase().includes(q));
   const g=document.getElementById('qAddGrid');
   if(!list.length){g.innerHTML='<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--text3)">ไม่พบ / อยู่ในคิวหมดแล้ว</div>';return;}
   g.innerHTML=list.map(s=>`<div class="sc" onclick="addToQ('${s.id}')">
@@ -806,6 +905,21 @@ function addToQ(id){
   renderQueue();renderQueueBanner();renderQAddGrid(document.getElementById('qStaffQ').value);
   toast('➕ '+s.nick+' เข้าคิวกะ '+curShift,'tok');
   saveQueue();
+}
+
+// เติมคิวกะปัจจุบันจากรายชื่อที่มาทำงานวันนี้ (ชีท STAFF RECORD)
+function fillQueueFromDuty(){
+  if(!dutyStaff.length){toast('ยังไม่มีรายชื่อวันนี้ในชีท','terr');return;}
+  const inQ=new Set(queueList.map(q=>q.sid));
+  let n=0,maxOrd=queueList.reduce((m,q)=>Math.max(m,q.order||0),0);
+  dutyStaffList().forEach(s=>{
+    if(!s.id||inQ.has(s.id))return;
+    queueList.push({sid:s.id,nick:s.nick,shift:curShift,status:'ว่าง',trips:s.sheetCases||0,order:++maxOrd});
+    n++;
+  });
+  if(!n){toast('ทุกคนอยู่ในคิวแล้ว','');return;}
+  renderQueue();renderQueueBanner();saveQueue();
+  toast('👥 เพิ่ม '+n+' คนเข้าคิวกะ '+curShift,'tok');
 }
 
 let _qSaveT=null;
@@ -835,30 +949,78 @@ function startQueueFlow(){
 // CASE LOADER — ดึงเคส assign จาก Porter Summary ผ่าน GAS
 // ══════════════════════════════════════════════════════════
 let todayCases=[];
-async function loadCases(){
+async function loadCases(force){
   const el=document.getElementById('caseContent');
-  el.innerHTML='<div class="fl-loading">⏳ กำลังโหลดเคสวันนี้...</div>';
+  if(el)el.innerHTML='<div class="fl-loading">⏳ กำลังโหลดเคสวันนี้...</div>';
+  if(force){caseCache=null;const lb=document.getElementById('lpBoard');if(lb)lb.innerHTML='<div class="fl-loading">⏳ กำลังโหลด...</div>';}
 
-  if(caseCache && (Date.now()-caseCacheAt)<CASE_TTL){renderCaseList(caseCache);return;}
+  if(!force && caseCache && (Date.now()-caseCacheAt)<CASE_TTL){todayCases=caseCache;renderCaseList(caseCache);renderLPBoard();return;}
 
   try{
     const r=await fetch(GAS_URL+'?action=cases',{method:'GET'});
     const data=await r.json();
     if(data.ok && data.cases){
-      caseCache=data.cases;caseCacheAt=Date.now();
+      caseCache=data.cases;caseCacheAt=Date.now();todayCases=data.cases;
+      if(data.staff)dutyStaff=data.staff;
       renderCaseList(data.cases);
+      renderLPBoard();
     } else {
-      el.innerHTML='<div class="fl-none" onclick="skipCase()">ไม่พบเคส assign วันนี้ / ข้าม →</div>';
+      if(el)el.innerHTML='<div class="fl-none" onclick="skipCase()">ไม่พบเคส assign วันนี้ / ข้าม →</div>';
+      renderLPBoard();
     }
   }catch(e){
-    el.innerHTML='<div class="fl-none" onclick="skipCase()">โหลดเคสไม่ได้ / ข้าม →</div>';
+    if(el)el.innerHTML='<div class="fl-none" onclick="skipCase()">โหลดเคสไม่ได้ / ข้าม →</div>';
+    const lb=document.getElementById('lpBoard');
+    if(lb)lb.innerHTML='<div class="empty" style="padding:20px"><div style="font-size:13px">โหลดเคสไม่ได้ — ตรวจสอบการเชื่อมต่อ</div></div>';
     console.warn('Case load error:',e);
   }
+}
+
+// ── บอร์ดเคสที่ LP assign (หน้าหลัก) ──
+function renderLPBoard(){
+  const el=document.getElementById('lpBoard');
+  if(!el)return;
+  if(!todayCases.length){
+    el.innerHTML='<div class="empty" style="padding:22px"><div style="font-size:34px;margin-bottom:6px">📭</div><div style="font-size:13px">ยังไม่มีเคส assign ในชีทวันนี้</div></div>';
+    return;
+  }
+  const busy=new Set(Object.values(trips).map(t=>String(t.caseNo)));
+  const rank=c=>c.delivered?2:(busy.has(String(c.no))||c.pickup?1:0);
+  const list=todayCases.slice().sort((a,b)=>rank(a)-rank(b)||a.no-b.no);
+  el.innerHTML=list.map(c=>{
+    const doing=busy.has(String(c.no))||(!!c.pickup&&!c.delivered);
+    const cls=c.delivered?'done':(doing?'doing':'wait');
+    const st=c.delivered?['lp-f','✓ ส่งแล้ว']:(doing?['lp-d','กำลังบริการ']:['lp-w','รอรับเคส']);
+    const time=c.dir==='DEP'?(c.etd?'ETD '+c.etd:''):(c.eta?'ETA '+c.eta:'');
+    const i=todayCases.indexOf(c);
+    return `<div class="lp ${cls}" onclick="startFromLP(${i})">
+      <div class="lp-body">
+        <div class="lp-top">#${c.no} ${c.flight}${c.svc?' · '+c.svc:''}${c.dir?' · '+c.dir:''}</div>
+        <div class="lp-porter">👷 ${c.porter||'— ยังไม่ระบุคน —'}</div>
+        <div class="lp-meta">${time}${c.gate?' · Gate '+c.gate:''}${c.notified?' · แจ้ง '+c.notified:''}${c.pickup?' · รับ '+c.pickup:''}${c.delivered?' · ส่ง '+c.delivered:''}</div>
+      </div>
+      <span class="lp-st ${st[0]}">${st[1]}</span>
+    </div>`;
+  }).join('');
+}
+
+// กดเคสจากบอร์ด LP → เริ่มงานด้วยคนที่ LP assign ไว้ + เคสนั้น
+function startFromLP(i){
+  const c=todayCases[i];
+  if(!c)return;
+  if(c.delivered){toast('เคสนี้ส่งแล้ว ✓','terr');return;}
+  const m=staffByName(c.porter);
+  selCase=c;
+  selFlight={code:c.flight,airline:c.airline,fltno:c.fltno,routing:'',sta:c.eta||'',std:c.etd||'',type:c.dir||''};
+  queueMode=false;
+  if(m){selS=m;toast('📋 #'+c.no+' · '+m.nick,'tok');go(2);}
+  else{selS=null;toast('เลือกพนักงานสำหรับเคส #'+c.no,'');go(1);}
 }
 
 function renderCaseList(cases){
   const el=document.getElementById('caseContent');
   todayCases=cases||[];
+  if(!el)return;
   // เอาเคสที่ยังไม่ส่งขึ้นก่อน, เคสที่จบแล้วไปท้ายรายการ
   const open=todayCases.filter(c=>!c.delivered);
   const done=todayCases.filter(c=>c.delivered);
@@ -1043,7 +1205,7 @@ function startService(){
   selS=null;selW=null;selFlight=null;selCase=null;
   caseCache=null; // ให้โหลดเคสใหม่รอบหน้า (สถานะรับเคสเปลี่ยนแล้ว)
   updateStats();go(0);
-  setTimeout(()=>loadQueue(true),2500);
+  setTimeout(()=>{loadQueue(true);loadCases(true);},2500);
 }
 
 function openStop(ctrl){
@@ -1077,8 +1239,8 @@ function confirmStop(){
   const qe2=queueList.find(q=>q.sid===t.sid);
   if(qe2){qe2.status='ว่าง';qe2.order=queueList.reduce((m,q)=>Math.max(m,q.order||0),0)+1;}
   flash();toast('🔴 จบแล้ว · '+t.snick+' · '+t.duration+' น.','tok');
-  updateStats();renderBoard();renderQueueBanner();
-  setTimeout(()=>loadQueue(true),2500);
+  updateStats();renderBoard();renderQueueBanner();renderLPBoard();
+  setTimeout(()=>{loadQueue(true);loadCases(true);},2500);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1193,6 +1355,7 @@ function toast(m,c=''){const t=document.getElementById('toast');t.textContent=m;
 
 updateStats();
 loadQueue();
+loadCases();
 </script>
 </body>
 </html>
