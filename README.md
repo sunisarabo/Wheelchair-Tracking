@@ -23,6 +23,27 @@ Google Apps Script Web App + Google Sheets
      จากชื่อไฟล์ใน Drive ให้อัตโนมัติ (fallback เป็น `PORTER_SS_ID`)
 3. **WC Tracker Log** — ไฟล์ที่ผูกกับ Apps Script นี้ (TripLog + DailySummary + Queue)
 
+## สรุปเคส + สถานะจริงจากชีท (v3.5)
+
+อ้างอิงโครงสร้างจริงของ **SEP 2026 PORTER SUMMARY** (แท็บรายวัน `01SEP26`…`14SEP26`)
+
+- **สถานะเคสจากชีทโดยตรง**: `STANDBY` (ยังไม่เริ่ม) / `ON PROCESS` (กำลังทำ) /
+  `COMPLETED` (จบแล้ว) — ไม่ต้องเดาจากเวลาอีก (ถ้าช่องสถานะว่างจึงค่อย fallback)
+- **1 เคสมีหลายคนได้**: ช่อง porter เช่น `"Chatchai, Maleekee"` ถูกแยกเป็น
+  `porters: ['Chatchai','Maleekee']` — นับเคสต่อคนได้ถูกต้อง
+- **เคส ETC** (ยกของ/เก็บเคาน์เตอร์ ไม่มีเที่ยวบิน) รองรับแล้ว
+- **วันหยุดของพนักงาน**: ชีทมาร์กพื้นหลังสีแดง (`** RED MARK = DAY OFF`) →
+  อ่านสีพื้นหลังมากรองออก เหลือเฉพาะ **คนที่มาทำงานจริง**
+- **แท็บ "📊 สรุป" ใหม่** (`GET ?action=summary`):
+  รวมทั้งวัน / ARR / DEP · สถานะ STANDBY–ON PROCESS–COMPLETED ·
+  เคสที่ยังไม่ assign · กำลังคน (มาทำงาน/วันหยุด/เคสต่อคน) ·
+  แยกตามประเภท Services · แยกตามสายการบิน · เคสต่อคน
+- **บอร์ด LP บนหน้าหลัก** เรียงเคส **"ยังไม่ assign" ขึ้นก่อน** แล้วตามด้วย
+  STANDBY → ON PROCESS → COMPLETED
+- **รับเคสตามคิว** หยิบเคสที่ยังไม่มีคน assign ก่อนเป็นอันดับแรก
+- ตาราง `ROMAN` แก้ให้ตรงกับที่ชีทสะกดจริง (Ratchaphol, Taofi, Ausman,
+  Pongsaton, Thirasak/Theerasak, CHALOEMKIAD, PIYATHAT, JIRAWAT ฯลฯ)
+
 ## แจ้งซ่อมรถเข็น (v3.4)
 
 - **กดค้าง** ที่คันไหนในหน้าเลือกรถเข็น (หรือคลิกขวาบนคอม) → หน้าต่างแจ้งซ่อม

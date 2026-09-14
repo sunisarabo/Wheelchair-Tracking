@@ -243,6 +243,20 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 .q-btn:active{background:var(--blue-lt);color:var(--blue)}
 .q-btn.del{background:var(--red-lt);color:var(--red)}
 
+/* SUMMARY */
+.sum-card{background:#fff;border-radius:14px;padding:14px;box-shadow:var(--sh);margin-bottom:11px}
+.sum-h{font-size:12px;font-weight:800;color:var(--gray);text-transform:uppercase;
+  letter-spacing:.5px;margin-bottom:9px}
+.sum-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sum-b{background:var(--bg);border-radius:10px;padding:9px 6px;text-align:center}
+.sum-n{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:600}
+.sum-t{font-size:10px;color:var(--gray);font-weight:600;margin-top:1px}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.bar-lb{font-size:12px;font-weight:700;min-width:52px}
+.bar-wrap{flex:1;height:16px;background:var(--bg);border-radius:8px;overflow:hidden}
+.bar-in{height:100%;background:var(--blue);border-radius:8px}
+.bar-n{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;min-width:26px;text-align:right}
+
 /* EMPTY */
 .empty{background:#fff;border-radius:14px;padding:34px 20px;text-align:center;
   color:var(--text3);box-shadow:var(--sh)}
@@ -477,6 +491,16 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
   <button class="obtn" onclick="go(2)">← เปลี่ยนรถเข็น</button>
 </div>
 
+<!-- SUMMARY -->
+<div class="page" id="pg-sum">
+  <div class="shdr">
+    <div><div class="shdr-title">📊 สรุปเคสวันนี้</div>
+    <div class="shdr-sub" id="sumSub">จาก Porter Summary</div></div>
+  </div>
+  <div id="sumBody"><div class="fl-loading">⏳ กำลังโหลดสรุป...</div></div>
+  <button class="obtn" onclick="loadSummary(true)">↻ รีเฟรชสรุป</button>
+</div>
+
 <!-- LOG -->
 <div class="page" id="pg-log">
   <div class="stats">
@@ -497,6 +521,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 <div class="bnav">
   <button class="bn active" id="bn0" onclick="showMain('home',this)"><span class="ico">🏠</span>หน้าหลัก</button>
   <button class="bn" id="bnQ" onclick="showMain('queue',this)"><span class="ico">🔄</span>คิว</button>
+  <button class="bn" id="bnS" onclick="showMain('sum',this)"><span class="ico">📊</span>สรุป</button>
   <button class="bn" id="bn1" onclick="showMain('log',this)"><span class="ico">📋</span>ประวัติ</button>
 </div>
 
@@ -593,25 +618,25 @@ const STAFF=[
 // ถ้าชีทสะกดต่างไป แก้ตรงนี้ได้เลย (จับคู่แบบไม่สนตัวพิมพ์/จุด/ช่องว่าง)
 // ══════════════════════════════════════════════════════════
 const ROMAN={
- '1900266':'Preecha','2101042':'Suthin','2101044':'Madereh','2101045':'Wutichai K.',
+ '1900266':'Preecha','2101042':'Suthin','2101044':'Madereh','2101045':'Wuttichai K.',
  '2101286':'Amun','2101305':'Suwan','2101306':'Jatuphon','2101314':'Worawut',
  '2101400':'Wutichai S.','2101401':'Tuankareem','2201447':'Akkachai','2201448':'Natthapong',
  '2201452':'Asmee','2201528':'Roengrit','2201837':'Adisorn','2201923':'Dueramea',
- '2201924':'Muhamdee','2201932':'Ameen','2201956':'Athippong','2202009':'Ratchapon',
+ '2201924':'Muhamdee','2201932':'Ameen','2201956':'Athippong','2202009':'Ratchaphol',
  '2202113':'Piyawat','2202114':'Atthakorn','2202282':'Atthachai','2302546':'Sutha',
  '2302548':'Warut','2302549':'Abdulsahed','2302859':'Permpol','2303228':'Arbukoree',
  '2303229':'Siddik','2304547':'Thanathit','2304628':'Chatchai','2304684':'Sittichai',
- '2304687':'Aslan','2304830':'Nawapon','2404853':'Krit','2404854':'Arrisan',
- '2404880':'Todsapon','2404881':'Chawanwit','2404911':'Irfan','2404912':'Arleeya',
- '2405006':'Suwardee','2405007':'Taufi','2405009':'Theerapong','2405010':'Kittipat',
- '2405074':'Ratchanon','2405118':'Sarawut','2405120':'Paisan','2405121':'Ahamasaodee',
- '2405163':'Nattapon','2405164':'Keerati','2405697':'Satakun','2406034':'Usman',
- '2506223':'Nattakan','2506224':'Phuwanai','2506806':'Hafizi','2506807':'Peerapat',
- '2506812':'Mustakim','2506813':'Theerasak','2506814':'Adunsak','2506815':'Teerasak',
- '2506817':'Pongsathorn','2506819':'Adeelan','2506820':'Waranyu','2506822':'Sulaiman',
- '2506824':'Thanawut','2506831':'Nattawut','2506833':'Maleekee','2506836':'E-LIYAS',
- '2506843':'Chalermkiat','2506844':'Piyatat','2506845':'Rachen','2506846':'Supakorn',
- '2506849':'Jarukit','2506850':'Jeerawat','2506860':'Fais','2506861':'Jatupong',
+ '2304687':'Aslan','2304830':'Nawaphon','2404853':'Kritsana','2404854':'Arrisan',
+ '2404880':'Tossapon','2404881':'Chavalvit','2404911':'Irfan','2404912':'Arleeya',
+ '2405006':'Suwardee','2405007':'Taofi','2405009':'Teerapong','2405010':'Kittiphat',
+ '2405074':'Ratchanon','2405118':'Sarawut','2405120':'Paisal','2405121':'Ahamasaodee',
+ '2405163':'Nattapon','2405164':'Keerati','2405697':'Sattakhun','2406034':'Ausman',
+ '2506223':'Nattakan','2506224':'Phuwanai','2506806':'Hafeesee','2506807':'Peerapat',
+ '2506812':'Mustakim','2506813':'Thirasak','2506814':'Adunsak','2506815':'Theerasak',
+ '2506817':'Pongsaton','2506819':'Adeelan','2506820':'Warunyu','2506822':'Sulaiman',
+ '2506824':'Tanawut','2506831':'Nattawut','2506833':'Maleekee','2506836':'E-LIYAS',
+ '2506843':'CHALOEMKIAD','2506844':'PIYATHAT','2506845':'Rachen','2506846':'Supakorn',
+ '2506849':'Jarukit','2506850':'JIRAWAT','2506860':'Fais','2506861':'Jatupong',
 };
 function normName(x){return String(x||'').toLowerCase().replace(/[^a-z0-9\u0e00-\u0e7f]/g,'');}
 // หา staff จากชื่อในชีท (อังกฤษ) — คืน null ถ้าจับคู่ไม่ได้
@@ -702,6 +727,7 @@ function showMain(id,el){
   if(id==='log')renderLog();
   if(id==='home'){renderBoard();loadQueue();loadCases();}
   if(id==='queue')loadQueue(true);
+  if(id==='sum')loadSummary();
 }
 function go(s){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -750,7 +776,7 @@ function setDuty(v){
 // คนที่จับคู่ไม่ได้จะคืนเป็น entry ชั่วคราว (sid ว่าง) เพื่อไม่ให้ตกหล่น
 function dutyStaffList(){
   const out=[],seen=new Set();
-  dutyStaff.forEach(d=>{
+  dutyStaff.filter(d=>d.onDuty!==false).forEach(d=>{
     const m=staffByName(d.name);
     if(m){if(!seen.has(m.id)){seen.add(m.id);out.push(Object.assign({},m,{sheetName:d.name,sheetCases:d.cases,sked:d.sked}));}}
     else out.push({id:'',name:d.name,nick:d.name,sheetName:d.name,sheetCases:d.cases,sked:d.sked,unmatched:true});
@@ -886,6 +912,73 @@ async function confirmWc(){
     const data=await r.json();
     if(data.ok&&data.repair){wcRepair={};data.repair.forEach(w=>{wcRepair[w.ctrl]=w;});renderWC();updateStats();}
   }catch(e){console.warn('wc_set:',e);toast('บันทึกสถานะซ่อมไม่สำเร็จ','terr');}
+}
+
+// ══════════════════════════════════════════════════════════
+// SUMMARY — สรุปเคสวันนี้ (ตัวเลขชุดเดียวกับบล็อกสรุปในชีท)
+// ══════════════════════════════════════════════════════════
+let sumData=null,sumAt=0;
+async function loadSummary(force){
+  const el=document.getElementById('sumBody');
+  if(!el)return;
+  if(!force&&sumData&&(Date.now()-sumAt)<60000){renderSummary();return;}
+  el.innerHTML='<div class="fl-loading">⏳ กำลังโหลดสรุป...</div>';
+  try{
+    const r=await fetch(GAS_URL+'?action=summary');
+    const d=await r.json();
+    if(d.ok&&d.summary){sumData=d.summary;sumAt=Date.now();renderSummary();}
+    else el.innerHTML='<div class="empty" style="padding:22px"><div style="font-size:13px">ไม่พบข้อมูลสรุปวันนี้</div></div>';
+  }catch(e){
+    el.innerHTML='<div class="empty" style="padding:22px"><div style="font-size:13px">โหลดสรุปไม่ได้ — ตรวจสอบการเชื่อมต่อ</div></div>';
+    console.warn('summary:',e);
+  }
+}
+
+function barList(obj,color){
+  const ent=Object.entries(obj||{}).filter(([k,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  if(!ent.length)return '<div style="font-size:12px;color:var(--text3)">—</div>';
+  const max=ent[0][1];
+  return ent.map(([k,v])=>`<div class="bar-row">
+    <span class="bar-lb">${k}</span>
+    <span class="bar-wrap"><span class="bar-in" style="width:${Math.round(v/max*100)}%;background:${color}"></span></span>
+    <span class="bar-n">${v}</span></div>`).join('');
+}
+
+function renderSummary(){
+  const el=document.getElementById('sumBody');
+  const d=sumData;
+  if(!el||!d)return;
+  const sub=document.getElementById('sumSub');
+  if(sub)sub.textContent='แท็บ '+(d.tab||'—')+' · อัปเดต '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  el.innerHTML=`
+  <div class="sum-card">
+    <div class="sum-h">รวมทั้งวัน</div>
+    <div class="sum-grid">
+      <div class="sum-b"><div class="sum-n cb">${d.total}</div><div class="sum-t">เคสทั้งหมด</div></div>
+      <div class="sum-b"><div class="sum-n cg">${d.arr}</div><div class="sum-t">ขาเข้า ARR</div></div>
+      <div class="sum-b"><div class="sum-n cy">${d.dep}</div><div class="sum-t">ขาออก DEP</div></div>
+    </div>
+  </div>
+  <div class="sum-card">
+    <div class="sum-h">สถานะเคส</div>
+    <div class="sum-grid">
+      <div class="sum-b"><div class="sum-n cb">${d.standby}</div><div class="sum-t">STANDBY</div></div>
+      <div class="sum-b"><div class="sum-n cy">${d.process}</div><div class="sum-t">ON PROCESS</div></div>
+      <div class="sum-b"><div class="sum-n cg">${d.completed}</div><div class="sum-t">COMPLETED</div></div>
+    </div>
+    ${d.unassigned?`<div style="margin-top:9px;font-size:12px;font-weight:700;color:var(--red)">⚠ ยังไม่ assign คน ${d.unassigned} เคส</div>`:''}
+  </div>
+  <div class="sum-card">
+    <div class="sum-h">กำลังคน</div>
+    <div class="sum-grid">
+      <div class="sum-b"><div class="sum-n cg">${d.onDuty}</div><div class="sum-t">มาทำงาน</div></div>
+      <div class="sum-b"><div class="sum-n cr">${d.dayOff}</div><div class="sum-t">วันหยุด</div></div>
+      <div class="sum-b"><div class="sum-n cb">${d.onDuty?(d.total/d.onDuty).toFixed(1):'—'}</div><div class="sum-t">เคส/คน</div></div>
+    </div>
+  </div>
+  <div class="sum-card"><div class="sum-h">ประเภท Services</div>${barList(d.bySvc,'var(--blue)')}</div>
+  <div class="sum-card"><div class="sum-h">แยกตามสายการบิน</div>${barList(d.byAirline,'var(--green)')}</div>
+  <div class="sum-card"><div class="sum-h">เคสต่อคน (จากชีท)</div>${barList(d.byStaff,'var(--yellow)')}</div>`;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1082,12 +1175,16 @@ function renderLPBoard(){
     return;
   }
   const busy=new Set(Object.values(trips).map(t=>String(t.caseNo)));
-  const rank=c=>c.delivered?2:(busy.has(String(c.no))||c.pickup?1:0);
+  const done=c=>c.state==='COMPLETED'||!!c.delivered;
+  const doing=c=>!done(c)&&(c.state==='ON PROCESS'||busy.has(String(c.no))||!!c.pickup);
+  const rank=c=>done(c)?3:(doing(c)?2:(c.assigned?1:0));   // ยังไม่ assign ขึ้นก่อน
   const list=todayCases.slice().sort((a,b)=>rank(a)-rank(b)||a.no-b.no);
   el.innerHTML=list.map(c=>{
-    const doing=busy.has(String(c.no))||(!!c.pickup&&!c.delivered);
-    const cls=c.delivered?'done':(doing?'doing':'wait');
-    const st=c.delivered?['lp-f','✓ ส่งแล้ว']:(doing?['lp-d','กำลังบริการ']:['lp-w','รอรับเคส']);
+    const isDone=done(c),isDoing=doing(c);
+    const cls=isDone?'done':(isDoing?'doing':'wait');
+    const st=isDone?['lp-f','✓ COMPLETED']
+      :(isDoing?['lp-d','ON PROCESS']
+      :(c.assigned?['lp-w','STANDBY']:['lp-w','⚠ ยังไม่ assign']));
     const time=c.dir==='DEP'?(c.etd?'ETD '+c.etd:''):(c.eta?'ETA '+c.eta:'');
     const i=todayCases.indexOf(c);
     return `<div class="lp ${cls}" onclick="startFromLP(${i})">
@@ -1105,8 +1202,8 @@ function renderLPBoard(){
 function startFromLP(i){
   const c=todayCases[i];
   if(!c)return;
-  if(c.delivered){toast('เคสนี้ส่งแล้ว ✓','terr');return;}
-  const m=staffByName(c.porter);
+  if(c.state==='COMPLETED'||c.delivered){toast('เคสนี้จบแล้ว ✓','terr');return;}
+  const m=staffByName((c.porters&&c.porters[0])||c.porter);
   selCase=c;
   selFlight={code:c.flight,airline:c.airline,fltno:c.fltno,routing:'',sta:c.eta||'',std:c.etd||'',type:c.dir||''};
   queueMode=false;
@@ -1119,8 +1216,8 @@ function renderCaseList(cases){
   todayCases=cases||[];
   if(!el)return;
   // เอาเคสที่ยังไม่ส่งขึ้นก่อน, เคสที่จบแล้วไปท้ายรายการ
-  const open=todayCases.filter(c=>!c.delivered);
-  const done=todayCases.filter(c=>c.delivered);
+  const open=todayCases.filter(c=>c.state!=='COMPLETED'&&!c.delivered);
+  const done=todayCases.filter(c=>c.state==='COMPLETED'||c.delivered);
   if(!todayCases.length){
     el.innerHTML='<div class="fl-none" onclick="skipCase()">ยังไม่มีเคส assign วันนี้ / ข้าม →</div>';
     return;
@@ -1134,14 +1231,14 @@ function renderCaseList(cases){
     const dirCls={DEP:'dep',ARR:'arr'}[c.dir]||'qt';
     const dirLabel={DEP:'⬆ DEP',ARR:'⬇ ARR'}[c.dir]||'—';
     const time=c.dir==='DEP'?(c.etd?'ETD '+c.etd:''):(c.eta?'ETA '+c.eta:'');
-    return `<div class="fl-item ${c.delivered?'done-case':''}" data-cidx="${i}"
+    return `<div class="fl-item ${(c.state==='COMPLETED'||c.delivered)?'done-case':''}" data-cidx="${i}"
       data-search="${(c.flight+' '+c.airline+' '+c.fltno+' '+c.porter+' '+c.svc).toLowerCase()}"
       onclick="pickCase(${i})">
       <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
         <span class="fl-code">#${c.no} ${c.flight}</span>
         ${c.svc?`<span class="fl-type-badge ssr">${c.svc}</span>`:''}
         <span class="fl-type-badge ${dirCls}">${dirLabel}</span>
-        ${c.delivered?'<span class="fl-type-badge" style="background:var(--gray-lt);color:var(--gray)">✓ ส่งแล้ว</span>':''}
+        ${(c.state==='COMPLETED'||c.delivered)?'<span class="fl-type-badge" style="background:var(--gray-lt);color:var(--gray)">✓ จบแล้ว</span>':(!c.assigned?'<span class="fl-type-badge" style="background:var(--red-lt);color:var(--red)">ยังไม่ assign</span>':'')}
       </div>
       <div class="fl-route">👷 ${c.porter||'—'}${c.gate?' · Gate '+c.gate:''}</div>
       <div class="fl-time">${time}${c.notified?' · แจ้งเคส '+c.notified:''}</div>
@@ -1153,8 +1250,9 @@ function renderCaseList(cases){
 
   // โหมดรับเคสตามคิว: เลือกเคสค้างที่เก่าสุดให้อัตโนมัติ (เปลี่ยนเองได้)
   if(queueMode && !selCase){
-    const auto=todayCases.findIndex(c=>!c.delivered && !c.pickup);
-    if(auto>=0)pickCase(auto);
+    const auto=todayCases.findIndex(c=>c.state==='STANDBY'&&!c.assigned);
+    const auto2=auto>=0?auto:todayCases.findIndex(c=>c.state==='STANDBY');
+    if(auto2>=0)pickCase(auto2);
   }
 }
 
@@ -1168,7 +1266,7 @@ function filterCase(q){
 function pickCase(i){
   const c=todayCases[i];
   if(!c)return;
-  if(c.delivered){toast('เคสนี้ส่งแล้ว ✓','terr');return;}
+  if(c.state==='COMPLETED'||c.delivered){toast('เคสนี้จบแล้ว ✓','terr');return;}
   selCase=c;
   // auto-fill flight จากเคส (เคลียร์ flight ที่เลือกเองไว้)
   selFlight={code:c.flight,airline:c.airline,fltno:c.fltno,routing:'',sta:c.eta||'',std:c.etd||'',type:c.dir||''};
