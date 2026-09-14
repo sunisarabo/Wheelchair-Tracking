@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════
-// WC TRACKER — Google Apps Script Backend  v3.1
+// WC TRACKER — Google Apps Script Backend  v3.5
 // Phuket Airport · Ground Handling
 // ═══════════════════════════════════════════════════════════════════
 //
@@ -28,8 +28,9 @@
 const FLIGHT_SS_ID = '1eN4KFB_yEOWZGn3NViMfq-AD_2Dy-IF7ECaP1C7KQiw';
 // ↑ Daily Flight Schedule Record 2026 (tab รายเดือน เช่น AUG2026)
 
-const PORTER_SS_ID = '1kvcr_cDgPUa70Oy4DjADZRNuIJs3QXYjbsCDjbOhLCw';
-// ↑ AUG 2026 PORTER SUMMARY (ไฟล์ assign case — เปลี่ยนทุกเดือน)
+const PORTER_SS_ID = '1cGLIpFPthPedkWjcQM_A4PFyKOGvuHAFCiJr-Jvs8II';
+// ↑ SEP 2026 PORTER SUMMARY (ไฟล์ assign case — เปลี่ยนทุกเดือน)
+//   tab รายวันชื่อรูปแบบ 01SEP26 / 14SEP26 (โค้ดหาเองอัตโนมัติ)
 
 const PORTER_AUTO_BY_NAME = true;
 // ↑ true = หาไฟล์ Porter Summary ของเดือนปัจจุบันจากชื่อ "MMM YYYY PORTER SUMMARY"
@@ -45,6 +46,15 @@ const PORTER_WRITEBACK = true;
 
 const LOG_SHEET   = 'TripLog';
 const STAT_SHEET  = 'DailySummary';
+const QUEUE_SHEET = 'Queue';
+const WC_SHEET    = 'WCStatus';
+
+const WC_HEADERS = ['รถเข็น','สถานะ','อาการ/หมายเหตุ','แจ้งโดย','แจ้งเมื่อ','อัปเดตล่าสุด'];
+// ↑ สถานะ: 'ซ่อม' = ใช้งานไม่ได้ · 'ใช้งานได้' = ซ่อมเสร็จ/กลับมาใช้ได้
+
+const QUEUE_HEADERS = ['วันที่','ลำดับ','รหัสพนักงาน','ชื่อเล่น','กะ','สถานะ','Trips วันนี้','อัปเดต'];
+// ↑ "ลำดับ" ใช้เป็นตัวตัดสินเมื่อจำนวนเคสเท่ากัน (คนที่ว่างก่อน/เข้าคิวก่อนขึ้นก่อน)
+//   ลำดับจริงของคิว = เรียงตาม "Trips วันนี้" น้อยสุดขึ้นก่อน แยกตามกะ
 
 // ── COLUMN MAPPING (Daily Flight Schedule Record) ───────────────────
 // Layout: (Date) | Airlines | FLT No. | Routing | STA | STD | A/C TYPE | A/C Reg.
@@ -92,6 +102,11 @@ const PCOL = {
   REMARK:       22,
 };
 
+// ── COLUMN MAPPING (PORTER SUMMARY — บล็อก STAFF RECORD ด้านขวา) ─────
+// Z(25)=NO. | AA(26)=SKED | AB(27)=NAME | AC(28)=CASE SUMMARY
+// = รายชื่อพนักงานที่ "มาทำงานวันนั้น" ที่ LP/OCC กรอกไว้
+const SCOL = { NO: 25, SKED: 26, NAME: 27, CASES: 28 };
+
 // ── HEADERS ─────────────────────────────────────────────────────────
 const LOG_HEADERS = [
   'Trip ID','วันที่','รถเข็น','ประเภท WC',
@@ -121,9 +136,33 @@ function doGet(e) {
     catch (err) { return jsonErr('cases error: ' + err.message); }
   }
 
+  // API: today's on-duty staff (STAFF RECORD block)
+  if (action === 'staff') {
+    try { return jsonOk(getTodayStaff()); }
+    catch (err) { return jsonErr('staff error: ' + err.message); }
+  }
+
+  // API: สถานะรถเข็น (เฉพาะคันที่แจ้งซ่อมอยู่)
+  if (action === 'wcstatus') {
+    try { return jsonOk({ repair: getWCRepair() }); }
+    catch (err) { return jsonErr('wcstatus error: ' + err.message); }
+  }
+
+  // API: สรุปเคสวันนี้
+  if (action === 'summary') {
+    try { return jsonOk({ summary: getTodaySummary() }); }
+    catch (err) { return jsonErr('summary error: ' + err.message); }
+  }
+
+  // API: today's porter queue
+  if (action === 'queue') {
+    try { return jsonOk({ queue: getQueue() }); }
+    catch (err) { return jsonErr('queue error: ' + err.message); }
+  }
+
   // API: health check
   if (action === 'health') {
-    return jsonOk({ app: 'WC Tracker HKT', version: '3.1', time: new Date().toISOString() });
+    return jsonOk({ app: 'WC Tracker HKT', version: '3.5', time: new Date().toISOString() });
   }
 
   // Default: serve the web-app UI
@@ -142,9 +181,11 @@ function doPost(e) {
     const action = data.action;
     const trip   = data.trip;
 
-    if      (action === 'start') return jsonOk(handleStart(trip));
-    else if (action === 'end')   return jsonOk(handleEnd(trip));
-    else                          return jsonErr('Unknown action: ' + action);
+    if      (action === 'start')     return jsonOk(handleStart(trip));
+    else if (action === 'end')       return jsonOk(handleEnd(trip));
+    else if (action === 'queue_set') return jsonOk({ queue: setQueue(data.queue || []) });
+    else if (action === 'wc_set')     return jsonOk({ repair: setWCStatus(data.wc || {}) });
+    else                              return jsonErr('Unknown action: ' + action);
 
   } catch (err) {
     Logger.log('doPost error: ' + err.message);
@@ -382,19 +423,32 @@ function getTodayCases() {
     const noNum = (typeof no === 'number') ? no : parseInt(no, 10);
     if (!noNum || isNaN(noNum) || !iata || !flt) continue;
 
+    const porterRaw = String(row[PCOL.PORTER] || '').trim();
+    const svc       = String(row[PCOL.SVC] || '').trim().toUpperCase();
+    const eta       = fmtTime(row[PCOL.ETA]);
+    const etd       = fmtTime(row[PCOL.ETD]);
+
+    // ขาเข้า/ขาออก: ใช้ checkbox ก่อน — ไม่มีก็ดูว่ามี ETA (เข้า) หรือ ETD (ออก)
+    let dir = row[PCOL.DEP_CHK] === true ? 'DEP'
+            : (row[PCOL.ARR_CHK] === true ? 'ARR' : '');
+    if (!dir) dir = etd ? 'DEP' : (eta ? 'ARR' : '');
+
     cases.push({
       row:       r + 1,                                    // แถวจริงใน Sheet (1-based)
       no:        noNum,
       airline:   iata,
       fltno:     flt,
-      flight:    (iata + flt.split('/')[0]).replace(/\s/g, ''),
-      porter:    String(row[PCOL.PORTER] || '').trim(),
+      flight:    (iata === 'ETC') ? 'ETC' : (iata + flt.split('/')[0]).replace(/\s/g, ''),
+      porter:    porterRaw,
+      porters:   splitPorters(porterRaw),                  // 1 เคสมีได้หลายคน ("A, B")
+      state:     caseState(row[PCOL.STATUS], row[PCOL.DELIVER_TIME], row[PCOL.PICKUP_TIME]),
       status:    String(row[PCOL.STATUS] || '').trim(),
-      eta:       fmtTime(row[PCOL.ETA]),
-      etd:       fmtTime(row[PCOL.ETD]),
+      assigned:  !!porterRaw,
+      eta:       eta,
+      etd:       etd,
       gate:      String(row[PCOL.GATE] || '').trim(),
-      svc:       String(row[PCOL.SVC]  || '').trim(),      // WCHR / WCHS / WCHC
-      dir:       row[PCOL.DEP_CHK] === true ? 'DEP' : (row[PCOL.ARR_CHK] === true ? 'ARR' : ''),
+      svc:       svc,                                      // WCHR/WCHS/WCHC/MAAS/AVIH/ETC
+      dir:       dir,
       notified:  fmtTime(row[PCOL.NOTIFIED]),
       pickup:    fmtTime(row[PCOL.PICKUP_TIME]),
       delivered: fmtTime(row[PCOL.DELIVER_TIME]),
@@ -403,68 +457,343 @@ function getTodayCases() {
   }
 
   Logger.log('Cases found: ' + cases.length + ' | tab: ' + sheet.getName());
-  return { cases: cases, tab: sheet.getName() };
+  return { cases: cases, staff: readStaffRecord(sheet), tab: sheet.getName() };
 }
 
-// ── เขียนเวลา รับเคส / ส่งเคส กลับไปที่ Porter Summary ──
-// phase: 'pickup' (ตอน start) | 'deliver' (ตอน end)
-// เขียนเฉพาะช่องที่ยังว่าง — ไม่ทับข้อมูลที่ OCC/LP กรอกเองแล้ว
-function markCase(trip, phase, timeStr) {
-  if (!PORTER_WRITEBACK) return;
-  if (!trip || !trip.caseRow) return;
+// ── ช่อง porter อาจมีหลายคน: "Chatchai, Maleekee" → ['Chatchai','Maleekee'] ──
+function splitPorters(raw) {
+  return String(raw || '').split(/[,/]+/)
+    .map(function (x) { return x.trim(); })
+    .filter(function (x) { return x.length > 0; });
+}
 
-  try {
-    const today = new Date();
-    const ss    = getPorterSpreadsheet(today);
-    const sheet = findPorterDayTab(ss, today);
-    if (!sheet) { Logger.log('markCase: day tab not found'); return; }
+// ── สถานะเคส: STANDBY (ยังไม่เริ่ม) / ON PROCESS (กำลังทำ) / COMPLETED (จบ) ──
+function caseState(statusCell, deliverCell, pickupCell) {
+  const st = String(statusCell || '').trim().toUpperCase();
+  if (st.indexOf('COMPLET') >= 0) return 'COMPLETED';
+  if (st.indexOf('PROCESS') >= 0) return 'ON PROCESS';
+  if (st.indexOf('CANCEL')  >= 0) return 'CANCELLED';
+  // ไม่มีค่าในช่องสถานะ → เดาจากเวลาที่กรอก
+  if (deliverCell) return 'COMPLETED';
+  if (pickupCell)  return 'ON PROCESS';
+  return 'STANDBY';
+}
 
-    let row = parseInt(trip.caseRow, 10);
-    const maxRow = sheet.getLastRow();
+// ═══════════════════════════════════════════════════════════════════
+// สรุปเคสประจำวัน — ให้ตัวเลขชุดเดียวกับบล็อกสรุปในชีท
+// ═══════════════════════════════════════════════════════════════════
+function getTodaySummary() {
+  const res   = getTodayCases();
+  const cases = res.cases || [];
+  const staff = res.staff || [];
 
-    // ตรวจว่าแถวยังเป็นเคสเดิม (กันกรณี OCC แทรก/ลบแถวหลังแอปโหลดข้อมูลไป)
-    const rowMatches = (r) => {
-      if (r < 1 || r > maxRow) return false;
-      const v = sheet.getRange(r, 1, 1, PCOL.SVC + 1).getValues()[0];
-      return String(v[PCOL.AIRLINE]).trim() === String(trip.caseAirline || '').trim()
-          && String(v[PCOL.FLTNO]).trim()   === String(trip.caseFltno   || '').trim();
-    };
+  const sum = {
+    tab:        res.tab,
+    total:      cases.length,
+    arr:        0, dep: 0,
+    standby:    0, process: 0, completed: 0,
+    unassigned: 0,
+    bySvc:      {},   // WCHR / WCHS / WCHC / MAAS / AVIH / ETC
+    byAirline:  {},   // 6E: 7, AI: 4, ...
+    byStaff:    {},   // ชื่อในชีท → จำนวนเคส
+    onDuty:     staff.filter(function (s) { return s.onDuty; }).length,
+    dayOff:     staff.filter(function (s) { return !s.onDuty; }).length
+  };
 
-    if (!rowMatches(row)) {
-      // หาแถวใหม่จาก airline + fltno + porter
-      row = -1;
-      const data = sheet.getDataRange().getValues();
-      for (let r = 0; r < data.length; r++) {
-        if (String(data[r][PCOL.AIRLINE]).trim() === String(trip.caseAirline || '').trim()
-         && String(data[r][PCOL.FLTNO]).trim()   === String(trip.caseFltno   || '').trim()
-         && (!trip.casePorter || String(data[r][PCOL.PORTER]).trim() === String(trip.casePorter).trim())) {
-          row = r + 1;
-          break;
-        }
-      }
-      if (row < 0) { Logger.log('markCase: case row not found for ' + trip.caseAirline + trip.caseFltno); return; }
-    }
+  cases.forEach(function (c) {
+    if (c.dir === 'ARR') sum.arr++;
+    else if (c.dir === 'DEP') sum.dep++;
 
-    const t = timeStr || Utilities.formatDate(new Date(), 'Asia/Bangkok', 'HH:mm');
+    if      (c.state === 'COMPLETED')  sum.completed++;
+    else if (c.state === 'ON PROCESS') sum.process++;
+    else if (c.state === 'STANDBY')    sum.standby++;
 
-    if (phase === 'pickup') {
-      const cur = sheet.getRange(row, PCOL.PICKUP_TIME + 1).getValue();
-      if (!cur) {
-        sheet.getRange(row, PCOL.PICKUP_MARK + 1).setValue(true);
-        sheet.getRange(row, PCOL.PICKUP_TIME + 1).setValue(t);
-        Logger.log('markCase pickup: row ' + row + ' = ' + t);
-      }
-    } else if (phase === 'deliver') {
-      const cur = sheet.getRange(row, PCOL.DELIVER_TIME + 1).getValue();
-      if (!cur) {
-        sheet.getRange(row, PCOL.DELIVER_TIME + 1).setValue(t);
-        Logger.log('markCase deliver: row ' + row + ' = ' + t);
-      }
-    }
-  } catch (e) {
-    // write-back พังต้องไม่ทำให้การบันทึก trip ล้ม
-    Logger.log('markCase error (' + phase + '): ' + e.message);
+    if (!c.assigned) sum.unassigned++;
+
+    const svc = c.svc || '-';
+    sum.bySvc[svc] = (sum.bySvc[svc] || 0) + 1;
+
+    const air = c.airline || '-';
+    sum.byAirline[air] = (sum.byAirline[air] || 0) + 1;
+
+    c.porters.forEach(function (p) {
+      sum.byStaff[p] = (sum.byStaff[p] || 0) + 1;
+    });
+  });
+
+  Logger.log('Summary: ' + sum.total + ' cases (ARR ' + sum.arr + ' / DEP ' + sum.dep
+    + ') · standby ' + sum.standby + ' · on process ' + sum.process
+    + ' · completed ' + sum.completed);
+  return sum;
+}
+
+// ── รายชื่อพนักงานที่มาทำงานวันนี้ (บล็อก STAFF RECORD) ──
+function getTodayStaff() {
+  const today = new Date();
+  const ss    = getPorterSpreadsheet(today);
+  const sheet = findPorterDayTab(ss, today);
+  if (!sheet) {
+    Logger.log('Staff: day tab not found for ' + today.toDateString());
+    return { staff: [], tab: null };
   }
+  return { staff: readStaffRecord(sheet), tab: sheet.getName() };
+}
+
+// อ่านบล็อก STAFF RECORD จาก tab รายวัน
+// หาหัวตาราง "NAME" (คู่กับ "NO."/"SKED") เองใน 12 แถวแรก — ถ้าไม่เจอใช้ SCOL
+function readStaffRecord(sheet) {
+  const data = sheet.getDataRange().getValues();
+  let colName = SCOL.NAME, colNo = SCOL.NO, colSked = SCOL.SKED, colCases = SCOL.CASES;
+  let headRow = -1;
+
+  for (let r = 0; r < Math.min(12, data.length); r++) {
+    for (let c = 0; c < data[r].length; c++) {
+      if (String(data[r][c] || '').trim().toUpperCase() === 'NAME') {
+        colName  = c;
+        colNo    = c - 2;
+        colSked  = c - 1;
+        colCases = c + 1;
+        headRow  = r;
+        break;
+      }
+    }
+    if (headRow >= 0) break;
+  }
+
+  // ชีทมาร์กคนที่ "วันหยุด" ด้วยพื้นหลังสีแดง (** RED MARK = DAY OFF)
+  let bg = [];
+  try {
+    bg = sheet.getRange(1, colName + 1, data.length, 1).getBackgrounds();
+  } catch (e) {
+    Logger.log('readStaffRecord: cannot read backgrounds — ' + e.message);
+  }
+
+  const staff = [];
+  const seen  = {};
+  for (let r = (headRow >= 0 ? headRow + 1 : 1); r < data.length; r++) {
+    const row  = data[r];
+    const name = String(row[colName] || '').trim();
+    if (!name) continue;
+    if (name.toUpperCase() === 'NAME') continue;
+    if (name.indexOf('**') === 0) continue;        // บรรทัดหมายเหตุ
+    if (seen[name]) continue;
+
+    const noRaw = colNo >= 0 ? row[colNo] : '';
+    const no    = (typeof noRaw === 'number') ? noRaw : parseInt(noRaw, 10);
+    if (!no || isNaN(no)) continue;                // แถวรายชื่อจริงต้องมีเลข NO.
+
+    const off = bg.length > r ? isDayOffColor(bg[r][0]) : false;
+
+    seen[name] = true;
+    staff.push({
+      no:     no,
+      name:   name,
+      sked:   colSked >= 0 ? String(row[colSked] || '').trim() : '',
+      cases:  Number(row[colCases]) || 0,
+      onDuty: !off,
+      dayOff: off
+    });
+  }
+
+  staff.sort(function (a, b) { return a.no - b.no; });
+  Logger.log('Staff record: ' + staff.length + ' (on duty '
+    + staff.filter(function (s) { return s.onDuty; }).length + ')');
+  return staff;
+}
+
+// พื้นหลังโทนแดง = วันหยุด (รองรับหลายเฉด เช่น #ff0000, #e06666, #f4cccc)
+function isDayOffColor(hex) {
+  const h = String(hex || '').trim().toLowerCase();
+  if (!h || h === '#ffffff' || h === 'white' || h.length < 7) return false;
+  const r = parseInt(h.substr(1, 2), 16);
+  const g = parseInt(h.substr(3, 2), 16);
+  const b = parseInt(h.substr(5, 2), 16);
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return false;
+  return r > 180 && (r - g) > 35 && (r - b) > 35;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// WC STATUS — แจ้งซ่อม / ซ่อมเสร็จ (sheet "WCStatus")
+// ═══════════════════════════════════════════════════════════════════
+// - แจ้งซ่อม  : รถคันนั้นจะถูกกันออกจากการเลือกใช้งานในแอปทุกเครื่อง
+// - ซ่อมเสร็จ : กลับมาใช้งานได้ (เก็บแถวไว้เป็นประวัติ)
+
+function getWCSheet() {
+  return getOrCreateSheet(SpreadsheetApp.getActiveSpreadsheet(), WC_SHEET, WC_HEADERS);
+}
+
+// คืนเฉพาะคันที่ "ซ่อม" อยู่ตอนนี้
+function getWCRepair() {
+  const sh   = getWCSheet();
+  const data = sh.getDataRange().getValues();
+  const list = [];
+  for (let r = 1; r < data.length; r++) {
+    if (String(data[r][1] || '').trim() !== 'ซ่อม') continue;
+    list.push({
+      ctrl:  String(data[r][0] || '').trim(),
+      note:  String(data[r][2] || '').trim(),
+      by:    String(data[r][3] || '').trim(),
+      since: String(data[r][4] || '').trim()
+    });
+  }
+  Logger.log('WC under repair: ' + list.length);
+  return list;
+}
+
+// wc = { ctrl, status: 'ซ่อม' | 'ใช้งานได้', note, by }
+function setWCStatus(wc) {
+  if (!wc || !wc.ctrl) throw new Error('No wc data');
+
+  const sh     = getWCSheet();
+  const now    = new Date();
+  const stamp  = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm:ss');
+  const status = (wc.status === 'ซ่อม') ? 'ซ่อม' : 'ใช้งานได้';
+  const data   = sh.getDataRange().getValues();
+
+  let row = -1;
+  for (let r = 1; r < data.length; r++) {
+    if (String(data[r][0]).trim() === String(wc.ctrl).trim()) { row = r + 1; break; }
+  }
+
+  if (row > 0) {
+    sh.getRange(row, 2).setValue(status);
+    sh.getRange(row, 3).setValue(wc.note || '');
+    sh.getRange(row, 4).setValue(wc.by || '');
+    if (status === 'ซ่อม') sh.getRange(row, 5).setValue(stamp);   // แจ้งเมื่อ
+    sh.getRange(row, 6).setValue(stamp);
+    sh.getRange(row, 1, 1, WC_HEADERS.length)
+      .setBackground(status === 'ซ่อม' ? '#fee2e2' : '#dcfce7');
+  } else {
+    sh.appendRow([wc.ctrl, status, wc.note || '', wc.by || '', stamp, stamp]);
+    sh.getRange(sh.getLastRow(), 1, 1, WC_HEADERS.length)
+      .setBackground(status === 'ซ่อม' ? '#fee2e2' : '#dcfce7');
+  }
+
+  Logger.log('WC ' + wc.ctrl + ' → ' + status + (wc.note ? ' (' + wc.note + ')' : ''));
+  return getWCRepair();
+}
+
+// เช็คว่ารถคันนี้แจ้งซ่อมอยู่ไหม
+function isWCUnderRepair(ctrl) {
+  if (!ctrl) return false;
+  return getWCRepair().some(function (w) { return w.ctrl === String(ctrl).trim(); });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PORTER QUEUE — คิวรับเคสอัตโนมัติ (เก็บใน sheet "Queue" — ทุกเครื่องเห็นตรงกัน)
+// ═══════════════════════════════════════════════════════════════════
+// การทำงาน:
+//  - Supervisor จัดคิวคนเข้าเวรจากหน้า "คิว" ในแอป (เลือกกะ A/B/C) → queue_set
+//  - ลำดับคิว = จำนวนเคสวันนี้น้อยสุดขึ้นก่อน (เสมอกัน → คนที่ว่างก่อนขึ้นก่อน)
+//  - เริ่มบริการ (start)  → คนนั้นสถานะ "กำลังบริการ" + นับ trip
+//  - จบบริการ (end)       → กลับเป็น "ว่าง" (ลำดับตัดสินเสมอถูกดันไปท้าย)
+//  - คิวเป็นรายวัน — ข้ามวันแล้วเริ่มคิวใหม่
+
+function queueTodayStr() {
+  return Utilities.formatDate(new Date(), 'Asia/Bangkok', 'dd/MM/yyyy');
+}
+
+function getQueueSheet(ss) {
+  return getOrCreateSheet(ss || SpreadsheetApp.getActiveSpreadsheet(), QUEUE_SHEET, QUEUE_HEADERS);
+}
+
+// ── อ่านคิวของวันนี้ (เรียงตามลำดับ) ──
+function getQueue() {
+  const sh    = getQueueSheet();
+  const today = queueTodayStr();
+  const data  = sh.getDataRange().getValues();
+  const list  = [];
+  for (let r = 1; r < data.length; r++) {
+    if (String(data[r][0]) !== today) continue;
+    list.push({
+      order:  Number(data[r][1]) || 0,
+      sid:    String(data[r][2] || ''),
+      nick:   String(data[r][3] || ''),
+      shift:  String(data[r][4] || 'A'),
+      status: String(data[r][5] || 'ว่าง'),
+      trips:  Number(data[r][6]) || 0,
+    });
+  }
+  // เคสน้อยสุดขึ้นก่อน → เสมอกันใช้ลำดับ (คนที่ว่างก่อน/เข้าคิวก่อน)
+  list.sort((a, b) => (a.trips - b.trips) || (a.order - b.order));
+  return list;
+}
+
+// ── บันทึกคิวใหม่ทั้งชุด (จากหน้า "คิว" ในแอป) ──
+// items = [{sid, nick, shift}, ...]
+// สถานะ/จำนวน trip/ลำดับตัดสินเสมอ ของคนที่อยู่ในคิวเดิมจะถูกเก็บไว้
+function setQueue(items) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sh    = getQueueSheet(ss);
+  const today = queueTodayStr();
+  const now   = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'HH:mm:ss');
+
+  // เก็บสถานะเดิมไว้ก่อนล้าง
+  const prev = {};
+  getQueue().forEach(q => { prev[q.sid] = q; });
+
+  // ลบแถวของวันนี้ (และวันเก่า — เก็บชีทให้สะอาด)
+  const data = sh.getDataRange().getValues();
+  for (let r = data.length - 1; r >= 1; r--) {
+    sh.deleteRow(r + 1);
+  }
+
+  const rows = (items || []).map((it, i) => {
+    const old = prev[String(it.sid)] || {};
+    return [
+      today,
+      old.order || (i + 1),
+      String(it.sid || ''),
+      String(it.nick || ''),
+      String(it.shift || old.shift || 'A'),
+      old.status || 'ว่าง',
+      old.trips  || 0,
+      now
+    ];
+  });
+  if (rows.length) sh.getRange(2, 1, rows.length, QUEUE_HEADERS.length).setValues(rows);
+
+  Logger.log('setQueue: ' + rows.length + ' คน');
+  return getQueue();
+}
+
+// ── hook ตอน start/end trip ──
+function queueOnStart(sid) {
+  try {
+    if (!sid) return;
+    const sh    = getQueueSheet();
+    const today = queueTodayStr();
+    const data  = sh.getDataRange().getValues();
+    for (let r = 1; r < data.length; r++) {
+      if (String(data[r][0]) === today && String(data[r][2]) === String(sid)) {
+        sh.getRange(r + 1, 6).setValue('กำลังบริการ');
+        sh.getRange(r + 1, 7).setValue((Number(data[r][6]) || 0) + 1);
+        sh.getRange(r + 1, 8).setValue(Utilities.formatDate(new Date(), 'Asia/Bangkok', 'HH:mm:ss'));
+        return;
+      }
+    }
+  } catch (e) { Logger.log('queueOnStart error: ' + e.message); }
+}
+
+function queueOnEnd(sid) {
+  try {
+    if (!sid) return;
+    const sh    = getQueueSheet();
+    const today = queueTodayStr();
+    const data  = sh.getDataRange().getValues();
+    let maxOrder = 0;
+    for (let r = 1; r < data.length; r++) {
+      if (String(data[r][0]) === today) maxOrder = Math.max(maxOrder, Number(data[r][1]) || 0);
+    }
+    for (let r = 1; r < data.length; r++) {
+      if (String(data[r][0]) === today && String(data[r][2]) === String(sid)) {
+        sh.getRange(r + 1, 2).setValue(maxOrder + 1);   // ตัวตัดสินเสมอ: ไปท้ายสุด
+        sh.getRange(r + 1, 6).setValue('ว่าง');
+        sh.getRange(r + 1, 8).setValue(Utilities.formatDate(new Date(), 'Asia/Bangkok', 'HH:mm:ss'));
+        return;
+      }
+    }
+  } catch (e) { Logger.log('queueOnEnd error: ' + e.message); }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -472,6 +801,7 @@ function markCase(trip, phase, timeStr) {
 // ═══════════════════════════════════════════════════════════════════
 function handleStart(trip) {
   if (!trip || !trip.id) throw new Error('No trip data');
+  if (isWCUnderRepair(trip.ctrl)) throw new Error('รถเข็น ' + trip.ctrl + ' แจ้งซ่อมอยู่ — เลือกคันอื่น');
 
   const ss  = SpreadsheetApp.getActiveSpreadsheet();
   const log = getOrCreateSheet(ss, LOG_SHEET, LOG_HEADERS);
@@ -504,6 +834,9 @@ function handleStart(trip) {
 
   // write-back "รับเคส" → Porter Summary
   markCase(trip, 'pickup', startTime.slice(0, 5));
+
+  // อัปเดตคิว: คนนี้กำลังบริการ
+  queueOnStart(trip.sid);
 
   Logger.log('START: ' + trip.id + ' | ' + trip.snick + ' | ' + trip.ctrl
     + (trip.caseNo ? ' | case #' + trip.caseNo : ''));
@@ -562,6 +895,9 @@ function handleEnd(trip) {
 
   // write-back "ส่งเคส" → Porter Summary
   markCase(trip, 'deliver', endTime.slice(0, 5));
+
+  // อัปเดตคิว: กลับเป็นว่าง + ไปต่อท้ายคิว
+  queueOnEnd(trip.sid);
 
   updateDailySummary(ss);
 
@@ -675,6 +1011,8 @@ function setupSheets() {
   getOrCreateSheet(ss, STAT_SHEET, [
     'วันที่','Trips ทั้งหมด','Trips เสร็จ','เฉลี่ย (น.)','นานสุด (น.)','สั้นสุด (น.)','> 60 น.','อัปเดต'
   ]);
+  getOrCreateSheet(ss, QUEUE_SHEET, QUEUE_HEADERS);
+  getOrCreateSheet(ss, WC_SHEET, WC_HEADERS);
   ss.rename('WC Tracker Log — HKT Ground Handling');
   SpreadsheetApp.getUi().alert(
     '✅ ตั้งค่าเสร็จ!\n\n' +
@@ -711,6 +1049,31 @@ function testFlights() {
     Logger.log('Total: ' + flights.length);
     flights.slice(0, 5).forEach(f => Logger.log(JSON.stringify(f)));
   } catch(e) {
+    Logger.log('ERROR: ' + e.message);
+  }
+}
+
+function testStaff() {
+  Logger.log('=== TEST STAFF ON DUTY ===');
+  try {
+    const res = getTodayStaff();
+    Logger.log('Tab: ' + res.tab + ' | Total: ' + res.staff.length);
+    res.staff.forEach(function (s) { Logger.log(s.no + '. ' + s.name + ' (' + s.cases + ' เคส)'); });
+  } catch (e) {
+    Logger.log('ERROR: ' + e.message);
+  }
+}
+
+function testSummary() {
+  Logger.log('=== TEST SUMMARY ===');
+  try {
+    const s = getTodaySummary();
+    Logger.log('Tab ' + s.tab + ' | total ' + s.total + ' (ARR ' + s.arr + ' / DEP ' + s.dep + ')');
+    Logger.log('STANDBY ' + s.standby + ' · ON PROCESS ' + s.process + ' · COMPLETED ' + s.completed);
+    Logger.log('ยังไม่ assign: ' + s.unassigned + ' | on duty ' + s.onDuty + ' / day off ' + s.dayOff);
+    Logger.log('SSR: ' + JSON.stringify(s.bySvc));
+    Logger.log('Airline: ' + JSON.stringify(s.byAirline));
+  } catch (e) {
     Logger.log('ERROR: ' + e.message);
   }
 }
