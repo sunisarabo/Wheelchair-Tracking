@@ -1662,8 +1662,9 @@ function setupSheets() {
   const made = [
     [LOG_SHEET,   LOG_HEADERS],
     [STAT_SHEET,  ['วันที่','Trips ทั้งหมด','Trips เสร็จ','เฉลี่ย (น.)','นานสุด (น.)','สั้นสุด (น.)','> 60 น.','อัปเดต']],
-    [QUEUE_SHEET, QUEUE_HEADERS],
-    [WC_SHEET,    WC_HEADERS]
+    [QUEUE_SHEET,  QUEUE_HEADERS],
+    [WC_SHEET,     WC_HEADERS],
+    [ASSIGN_SHEET, ASSIGN_HEADERS]
   ].map(function (x) { getOrCreateSheet(ss, x[0], x[1]); return x[0]; });
 
   ss.rename('WC Tracker Log — HKT Ground Handling');
@@ -1673,7 +1674,10 @@ function setupSheets() {
     + 'ขั้นตอนต่อไป:\n'
     + '1. Run listPorterTabs() — เช็คว่าเจอ tab รายวันของ Porter Summary\n'
     + '2. Run testPre() — เช็คตารางเวร + ยอดจองล่วงหน้า\n'
-    + '3. Run testCases() / testSummary() — เช็คเคสและสรุปวันนี้';
+    + '3. Run testCases() / testSummary() — เช็คเคสและสรุปวันนี้\n'
+    + '4. Run testFreeCaseRows() — เหลือแถวว่างให้ LP เปิดเคสใหม่กี่แถว\n'
+    + '5. Run testMyJobs() — เช็คการจับคู่ชื่อ porter กับเคสในชีท\n'
+    + '   (แก้ชื่อในฟังก์ชันเป็นคนที่มีเคสจริงวันนี้ก่อนรัน)';
 
   Logger.log(msg);
 
