@@ -63,6 +63,11 @@ const QUEUE_SHEET = 'Queue';
 const WC_SHEET    = 'WCStatus';
 const ASSIGN_SHEET = 'AssignLog';   // ประวัติการจ่ายงานของ LP (ใครจ่ายเคสไหนให้ใคร เมื่อไหร่)
 
+// งานที่เริ่มมานานกว่านี้ = "ค้าง" ไม่ใช่ "กำลังทำอยู่"
+// เคสรถเข็นหนึ่งเคสใช้เวลาเป็นสิบนาที ไม่ใช่เป็นวัน — ที่ค้างคือคนลืมกดจบ
+// หรือมือถือดับ/ปิดแอประหว่างงาน ตั้งเผื่อกะยาวสุด (17:00–05:00) ไว้แล้ว
+const STALE_HOURS = 12;
+
 const WC_HEADERS = ['รถเข็น','สถานะ','อาการ/หมายเหตุ','แจ้งโดย','แจ้งเมื่อ','อัปเดตล่าสุด'];
 // ↑ สถานะ: 'ซ่อม' = ใช้งานไม่ได้ · 'ใช้งานได้' = ซ่อมเสร็จ/กลับมาใช้ได้
 
@@ -224,6 +229,12 @@ function doGet(e) {
     catch (err) { return jsonErr('active error: ' + err.message); }
   }
 
+  // API: งานที่เปิดค้างนานเกินกำหนด (ต้องให้ LP กดปิด)
+  if (action === 'stale') {
+    try { return jsonOk({ stale: getStaleTrips() }); }
+    catch (err) { return jsonErr('stale error: ' + err.message); }
+  }
+
   // API: งานของ porter คนเดียว — ?action=myjobs&sid=...&name=...
   if (action === 'myjobs') {
     try {
@@ -257,6 +268,7 @@ function doPost(e) {
     else if (action === 'end')       return jsonOk(handleEnd(trip));
     else if (action === 'assign')    return jsonOk(assignCase(data.assign || {}));
     else if (action === 'case_new')  return jsonOk(createCase(data.case || {}));
+    else if (action === 'close_stale') return jsonOk({ closed: closeStaleTrips(data.by || '') });
     else if (action === 'queue_set') return jsonOk({ queue: setQueue(data.queue || []) });
     else if (action === 'wc_set')     return jsonOk({ repair: setWCStatus(data.wc || {}) });
     else                              return jsonErr('Unknown action: ' + action);
@@ -896,7 +908,10 @@ function getBoard() {
     out.roster = []; out.errors.push('pre: ' + e.message);
   }
 
-  try { out.active = getActiveTrips(); } catch (e) { out.active = []; out.errors.push('active: ' + e.message); }
+  try {
+    const t = scanOpenTrips();
+    out.active = t.active; out.stale = t.stale;
+  } catch (e) { out.active = []; out.stale = []; out.errors.push('active: ' + e.message); }
   try { out.queue  = getQueue(); }    catch (e) { out.queue = [];  out.errors.push('queue: ' + e.message); }
   try { out.repair = getWCRepair(); } catch (e) { out.repair = []; out.errors.push('repair: ' + e.message); }
 
@@ -1102,14 +1117,22 @@ const TCOL = {
   CASE_ROW: 20, CASE_AIRLINE: 21, CASE_FLTNO: 22,
 };
 
-function getActiveTrips() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (!ss) return [];
-  const log = ss.getSheetByName(LOG_SHEET);
-  if (!log || log.getLastRow() < 2) return [];
+function getActiveTrips() { return scanOpenTrips().active; }
 
-  const data = log.getDataRange().getValues();
-  const out  = [];
+// งานที่เปิดค้างนานเกิน STALE_HOURS — ไม่นับเป็นงานที่กำลังทำ
+// ถ้าปล่อยไว้จะล็อกรถเข็นคันนั้นไม่ให้ใครใช้ และโชว์ตัวจับเวลาเดินเป็นร้อยชั่วโมง
+function getStaleTrips() { return scanOpenTrips().stale; }
+
+// อ่าน TripLog รอบเดียว แล้วแยกเป็น "กำลังทำ" กับ "ค้าง"
+function scanOpenTrips() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) return { active: [], stale: [] };
+  const log = ss.getSheetByName(LOG_SHEET);
+  if (!log || log.getLastRow() < 2) return { active: [], stale: [] };
+
+  const data   = log.getDataRange().getValues();
+  const active = [], stale = [];
+  const cutoff = Date.now() - STALE_HOURS * 3600 * 1000;
 
   for (let r = 1; r < data.length; r++) {
     const row = data[r];
@@ -1117,7 +1140,10 @@ function getActiveTrips() {
     if (row[TCOL.END]) continue;                                   // จบไปแล้ว
     if (String(row[TCOL.STATUS] || '').indexOf('กำลัง') < 0) continue;
 
-    out.push({
+    const startMs = tripStartMs(row[TCOL.DATE], row[TCOL.START]);
+    const bucket  = (startMs !== null && startMs < cutoff) ? stale : active;
+
+    bucket.push({
       id:          String(row[TCOL.ID]),
       date:        fmtDateCell(row[TCOL.DATE]),
       ctrl:        String(row[TCOL.CTRL]  || ''),
@@ -1138,9 +1164,46 @@ function getActiveTrips() {
       caseAirline: String(row[TCOL.CASE_AIRLINE] || ''),
       caseFltno:   String(row[TCOL.CASE_FLTNO]   || ''),
       logRow:      r + 1,
+      ageHours:    startMs === null ? null : Math.round((Date.now() - startMs) / 360000) / 10,
     });
   }
-  return out;
+  return { active: active, stale: stale };
+}
+
+// "20/09/2026" + "08:12:30" → epoch ms (เวลาไทย) · อ่านไม่ออกคืน null
+// อ่านไม่ออก = ไม่รู้ว่าเก่าแค่ไหน จึงถือว่ายังใช้งานอยู่ ดีกว่าไปปิดงานจริงของใคร
+function tripStartMs(dateVal, timeVal) {
+  const d = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(fmtDateCell(dateVal));
+  const t = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(fmtClockCell(timeVal));
+  if (!d || !t) return null;
+  const ms = new Date(Number(d[3]), Number(d[2]) - 1, Number(d[1]),
+                      Number(t[1]), Number(t[2]), Number(t[3] || 0)).getTime();
+  return isNaN(ms) ? null : ms;
+}
+
+// ── ปิดงานที่ค้าง ──
+// ไม่เดาเวลาจบ (ไม่มีใครรู้ว่าจบจริงตอนไหน) — ทำแค่ปลดล็อกรถเข็น
+// และกันไม่ให้แถวนั้นโผล่เป็น "กำลังให้บริการ" อีก ประวัติยังอยู่ครบ
+function closeStaleTrips(by) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error('ไม่พบ Spreadsheet ที่ผูกกับสคริปต์นี้');
+  const log = ss.getSheetByName(LOG_SHEET);
+  if (!log) return [];
+
+  const stale = getStaleTrips();
+  const now   = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'dd/MM/yyyy HH:mm:ss');
+  const who   = String(by || '').trim();
+
+  stale.forEach(function (t) {
+    log.getRange(t.logRow, TCOL.STATUS + 1)
+       .setValue('ค้าง — ไม่ได้กดจบ' + (who ? ' (ปิดโดย ' + who + ')' : ''));
+    log.getRange(t.logRow, TCOL.SAVED + 1).setValue(now);
+    Logger.log('ปิดงานค้าง: ' + t.id + ' | ' + t.snick + ' | ' + t.ctrl
+      + ' | เริ่ม ' + t.date + ' ' + t.startTime + ' (' + t.ageHours + ' ชม.)');
+  });
+
+  Logger.log('ปิดงานค้างทั้งหมด ' + stale.length + ' รายการ');
+  return stale;
 }
 
 // เซลล์วันที่ใน TripLog เขียนเป็นข้อความ dd/MM/yyyy แต่ชีทอาจแปลงเป็น Date เอง
@@ -1797,14 +1860,23 @@ function testPost() {
 
 // ── v5.0: งานที่ยังค้างอยู่ + งานของ porter คนหนึ่ง ──
 function testActive() {
-  const a = getActiveTrips();
-  Logger.log('งานที่ยังไม่จบ: ' + a.length);
-  a.forEach(function (t) {
-    Logger.log('  ' + t.id + ' | ' + t.snick + ' | ' + t.ctrl
-      + ' | เริ่ม ' + t.startTime
-      + (t.caseNo ? ' | เคส #' + t.caseNo : '') + ' | ✈ ' + t.flight);
-  });
-  return a;
+  const t = scanOpenTrips();
+  const line = function (x) {
+    return '  ' + x.id + ' | ' + x.snick + ' | ' + x.ctrl
+      + ' | เริ่ม ' + x.date + ' ' + x.startTime
+      + (x.ageHours === null ? '' : ' (' + x.ageHours + ' ชม.)')
+      + (x.caseNo ? ' | เคส #' + x.caseNo : '') + ' | ✈ ' + x.flight;
+  };
+
+  Logger.log('กำลังให้บริการอยู่จริง: ' + t.active.length);
+  t.active.forEach(function (x) { Logger.log(line(x)); });
+
+  Logger.log('งานค้าง (เปิดเกิน ' + STALE_HOURS + ' ชม. ไม่ได้กดจบ): ' + t.stale.length);
+  t.stale.forEach(function (x) { Logger.log(line(x)); });
+  if (t.stale.length) {
+    Logger.log('  ↳ รถเข็นพวกนี้ยังถูกกันไว้ — รัน closeStaleTrips() หรือกดปุ่มในแอป (LP) เพื่อปลดล็อก');
+  }
+  return t;
 }
 
 // แก้ชื่อตรงนี้เป็นชื่ออังกฤษอย่างที่สะกดในชีท แล้วกด Run เพื่อเช็คการจับคู่
