@@ -85,15 +85,28 @@ jobs:
         run: clasp push -f
 
       - name: อัปเดต Web App deployment (URL เดิม)
-        if: ${{ secrets.GAS_DEPLOYMENT_ID != '' }}
-        run: clasp deploy -i "${{ secrets.GAS_DEPLOYMENT_ID }}" -d "auto-deploy ${{ github.sha }}"
+        env:
+          DEPLOY_ID: ${{ secrets.GAS_DEPLOYMENT_ID }}
+          SHA: ${{ github.sha }}
+        run: |
+          if [ -n "$DEPLOY_ID" ]; then
+            clasp deploy -i "$DEPLOY_ID" -d "auto-deploy $SHA"
+            echo "DEPLOYED=1" >> "$GITHUB_ENV"
+          else
+            echo "ไม่ได้ตั้ง GAS_DEPLOYMENT_ID — ข้ามการอัปเดต Web App deployment"
+            echo "DEPLOYED=0" >> "$GITHUB_ENV"
+          fi
 
       - name: สรุปผล
+        env:
+          SHA: ${{ github.sha }}
         run: |
-          echo "### ✅ Deploy สำเร็จ" >> $GITHUB_STEP_SUMMARY
-          echo "commit \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          if [ -n "${{ secrets.GAS_DEPLOYMENT_ID }}" ]; then
-            echo "อัปเดต Web App deployment แล้ว — URL \`/exec\` เดิมได้โค้ดใหม่ทันที" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⚠️ ยังไม่ได้ตั้ง \`GAS_DEPLOYMENT_ID\` — โค้ดใน editor อัปเดตแล้ว แต่ Web App ยังเสิร์ฟเวอร์ชันเดิมจนกว่าจะกด Deploy เอง" >> $GITHUB_STEP_SUMMARY
-          fi
+          {
+            echo "### ✅ Deploy สำเร็จ"
+            echo "commit \`$SHA\`"
+            if [ "$DEPLOYED" = "1" ]; then
+              echo "อัปเดต Web App deployment แล้ว — URL \`/exec\` เดิมได้โค้ดใหม่ทันที"
+            else
+              echo "⚠️ ยังไม่ได้ตั้ง \`GAS_DEPLOYMENT_ID\` — โค้ดใน editor อัปเดตแล้ว แต่ Web App ยังเสิร์ฟเวอร์ชันเดิมจนกว่าจะกด Deploy เอง"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
