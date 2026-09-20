@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════
-// WC TRACKER — Google Apps Script Backend  v3.5
+// WC TRACKER — Google Apps Script Backend  v4.0
 // Phuket Airport · Ground Handling
 // ═══════════════════════════════════════════════════════════════════
 //
@@ -39,6 +39,13 @@ const PORTER_AUTO_BY_NAME = true;
 const PORTER_TAB_OVERRIDE = '';
 // ↑ ปกติโค้ดจะหา tab รายวันเอง (จากชื่อ tab หรือวันที่ในหัวตาราง)
 //   ถ้าหาไม่เจอ ให้ใส่ชื่อ tab ตรงนี้ เช่น '18' หรือ '18AUG'
+
+// ── PRE-WHEELCHAIR (ยอดจองล่วงหน้า + ตารางเวร porter) ───────────────
+const PRE_SS_ID = '1m_l9V0OAS2iW1KmsMEfzOZiQI_s_QybsilkeLxCAbSY';
+// ↑ SEP 2026 PRE-WHEELCHAIR — อยู่ในโฟลเดอร์ <PRE_ROOT_FOLDER_ID>/SEP 2026
+const PRE_ROOT_FOLDER_ID = '1xiTMfPDQ0nRLf0eKYjhn2SIeiP8-HRwb';
+const PRE_AUTO_BY_NAME = true;
+// ↑ true = หาไฟล์ "MMM YYYY PRE-WHEELCHAIR" ของเดือนปัจจุบันเองจาก Drive
 
 const PORTER_WRITEBACK = true;
 // ↑ true = ตอน start/end trip ที่ลิงก์กับเคส จะเขียนเวลา "รับเคส/ส่งเคส"
@@ -107,6 +114,23 @@ const PCOL = {
 // = รายชื่อพนักงานที่ "มาทำงานวันนั้น" ที่ LP/OCC กรอกไว้
 const SCOL = { NO: 25, SKED: 26, NAME: 27, CASES: 28 };
 
+// ── COLUMN MAPPING (PRE-WHEELCHAIR — tab รายวัน เช่น 20SEP26) ───────
+// บล็อก A: ไฟลท์ + ยอดจองล่วงหน้า (0-20)
+// บล็อก B: จำนวนเคสแต่ละช่วงเวลา / MANPOWER (23-26, สองตารางซ้อนกัน)
+// บล็อก C: Porter Daily Assignment = ตารางเวรจริง (28-32)
+const FCOL = {
+  AIRLINE:  0, FLTNO: 1, ROUTING: 2,
+  STA_RAW:  3, STD_RAW: 4, STA: 5, STD: 6,
+  CT_OPEN:  7, CT_CLOSE: 8,
+  A_WCHR:   9, A_WCHS: 10, A_WCHC: 11, A_AVIH: 12, A_MAAS: 13, A_TOTAL: 14,
+  D_WCHR:  15, D_WCHS: 16, D_WCHC: 17, D_AVIH: 18, D_MAAS: 19, D_TOTAL: 20,
+  WIN_LBL: 23, WIN_1: 25, WIN_2: 26,   // demand: ขาเข้า/ขาออก · manpower: SKED/OT
+  R_NAME:  28, R_IN: 29, R_OUT: 30, R_OT_IN: 31, R_OT_OUT: 32,
+};
+
+// รหัสสถานะในตารางเวร (ไม่ใช่เวลา = ไม่ได้มาทำงาน)
+const OFF_CODES = ['OFF','SL','BL','AL','ML','PL','X','-'];
+
 // ── HEADERS ─────────────────────────────────────────────────────────
 const LOG_HEADERS = [
   'Trip ID','วันที่','รถเข็น','ประเภท WC',
@@ -154,6 +178,26 @@ function doGet(e) {
     catch (err) { return jsonErr('summary error: ' + err.message); }
   }
 
+  // API: ยอดจองล่วงหน้า + ตารางเวร + demand/manpower
+  if (action === 'pre') {
+    try { return jsonOk(getPreBooking()); }
+    catch (err) { return jsonErr('pre error: ' + err.message); }
+  }
+
+  // API: ตารางเวร porter วันนี้ (จาก PRE-WHEELCHAIR)
+  if (action === 'roster') {
+    try {
+      const pre = getPreBooking();
+      return jsonOk({ tab: pre.tab, roster: pre.roster });
+    } catch (err) { return jsonErr('roster error: ' + err.message); }
+  }
+
+  // API: ข้อมูลทั้งหน้าจอในครั้งเดียว (ลดจำนวน request จากมือถือ)
+  if (action === 'board') {
+    try { return jsonOk(getBoard()); }
+    catch (err) { return jsonErr('board error: ' + err.message); }
+  }
+
   // API: today's porter queue
   if (action === 'queue') {
     try { return jsonOk({ queue: getQueue() }); }
@@ -162,7 +206,7 @@ function doGet(e) {
 
   // API: health check
   if (action === 'health') {
-    return jsonOk({ app: 'WC Tracker HKT', version: '3.5', time: new Date().toISOString() });
+    return jsonOk({ app: 'WC Tracker HKT', version: '4.0', time: new Date().toISOString() });
   }
 
   // Default: serve the web-app UI
@@ -521,6 +565,20 @@ function getTodaySummary() {
     });
   });
 
+  // เทียบกับยอดจองล่วงหน้า + กำลังคนต่อช่วงเวลา
+  try {
+    const pre = getPreBooking();
+    sum.preBooked = pre.total;
+    sum.demand    = pre.demand;
+    sum.manpower  = pre.manpower;
+    sum.window    = currentWindow(pre);
+    sum.rosterOn  = pre.roster.filter(function (r) { return r.onDuty; }).length;
+    sum.rosterOff = pre.roster.filter(function (r) { return r.status !== 'DUTY'; }).length;
+    sum.rosterAll = pre.roster.length;
+  } catch (e) {
+    Logger.log('summary/pre error: ' + e.message);
+  }
+
   Logger.log('Summary: ' + sum.total + ' cases (ARR ' + sum.arr + ' / DEP ' + sum.dep
     + ') · standby ' + sum.standby + ' · on process ' + sum.process
     + ' · completed ' + sum.completed);
@@ -610,6 +668,209 @@ function isDayOffColor(hex) {
   const b = parseInt(h.substr(5, 2), 16);
   if (isNaN(r) || isNaN(g) || isNaN(b)) return false;
   return r > 180 && (r - g) > 35 && (r - b) > 35;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PRE-WHEELCHAIR — ยอดจองล่วงหน้า + ตารางเวร porter + demand/manpower
+// ═══════════════════════════════════════════════════════════════════
+// ไฟล์: "<MMM> <YYYY> PRE-WHEELCHAIR" (โฟลเดอร์รายเดือนใน PRE_ROOT_FOLDER_ID)
+// tab รายวัน: 01SEP26 … 30SEP26 (รูปแบบเดียวกับ Porter Summary)
+
+function getPreSpreadsheet(date) {
+  if (PRE_AUTO_BY_NAME) {
+    try {
+      const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+      const key    = months[date.getMonth()] + ' ' + date.getFullYear() + ' PRE-WHEELCHAIR';
+      // ชื่อไฟล์จริงมีช่องว่างท้ายชื่อ — ใช้ contains แทน getFilesByName
+      const it = DriveApp.searchFiles('title contains "' + key + '"');
+      if (it.hasNext()) return SpreadsheetApp.open(it.next());
+      Logger.log('PRE file not found by name: "' + key + '" — fallback to PRE_SS_ID');
+    } catch (e) {
+      Logger.log('PRE file search error: ' + e.message + ' — fallback to PRE_SS_ID');
+    }
+  }
+  return SpreadsheetApp.openById(PRE_SS_ID);
+}
+
+// tab รายวันใช้รูปแบบเดียวกับ Porter Summary (01SEP26) → ใช้ resolver เดิม
+function findPreDayTab(ss, date) {
+  return findPorterDayTab(ss, date);
+}
+
+// ── อ่าน tab รายวันของ PRE-WHEELCHAIR ทั้ง 3 บล็อกในรอบเดียว ──
+function getPreBooking() {
+  const today = new Date();
+  let ss;
+  try {
+    ss = getPreSpreadsheet(today);
+  } catch (e) {
+    throw new Error('Cannot open PRE-WHEELCHAIR. Check PRE_SS_ID. ' + e.message);
+  }
+
+  const sheet = findPreDayTab(ss, today);
+  if (!sheet) {
+    Logger.log('PRE day tab not found for ' + today.toDateString());
+    return { tab: null, flights: [], demand: [], manpower: [], roster: [], total: 0 };
+  }
+
+  const data = sheet.getDataRange().getValues();
+
+  const flights  = [];
+  const demand   = [];
+  const manpower = [];
+  const roster   = [];
+  let inManpower = false;   // บล็อก B มีสองตารางซ้อน: demand ก่อน แล้ว MANPOWER
+
+  for (let r = 0; r < data.length; r++) {
+    const row = data[r];
+
+    // ── บล็อก A: ไฟลท์ + ยอดจอง ──
+    const air = String(row[FCOL.AIRLINE] || '').trim();
+    const flt = String(row[FCOL.FLTNO]   || '').trim();
+    if (air && flt && air.toUpperCase() !== 'AIRLINES' && !/^\*/.test(air)) {
+      const arr = {
+        wchr: num(row[FCOL.A_WCHR]), wchs: num(row[FCOL.A_WCHS]), wchc: num(row[FCOL.A_WCHC]),
+        avih: num(row[FCOL.A_AVIH]), maas: num(row[FCOL.A_MAAS]), total: num(row[FCOL.A_TOTAL])
+      };
+      const dep = {
+        wchr: num(row[FCOL.D_WCHR]), wchs: num(row[FCOL.D_WCHS]), wchc: num(row[FCOL.D_WCHC]),
+        avih: num(row[FCOL.D_AVIH]), maas: num(row[FCOL.D_MAAS]), total: num(row[FCOL.D_TOTAL])
+      };
+      if (arr.total || dep.total) {          // เก็บเฉพาะไฟลท์ที่มียอดจอง
+        flights.push({
+          airline: air,
+          fltno:   flt,
+          routing: String(row[FCOL.ROUTING] || '').trim(),
+          sta:     fmtTime(row[FCOL.STA]),
+          std:     fmtTime(row[FCOL.STD]),
+          ctOpen:  fmtTime(row[FCOL.CT_OPEN]),
+          ctClose: fmtTime(row[FCOL.CT_CLOSE]),
+          arr:     arr,
+          dep:     dep,
+          total:   arr.total + dep.total
+        });
+      }
+    }
+
+    // ── บล็อก B: ช่วงเวลา (demand ก่อน → MANPOWER) ──
+    const lbl = String(row[FCOL.WIN_LBL] || '').trim();
+    if (lbl.toUpperCase() === 'MANPOWER') inManpower = true;
+    if (/^\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}$/.test(lbl)) {
+      const a = num(row[FCOL.WIN_1]);
+      const b = num(row[FCOL.WIN_2]);
+      const bucket = inManpower ? manpower : demand;
+      // แถวช่วงเวลาถูก merge สองบรรทัด — กันซ้ำ
+      if (!bucket.length || bucket[bucket.length - 1].win !== lbl) {
+        bucket.push(inManpower ? { win: lbl, sked: a, ot: b }
+                               : { win: lbl, arr: a, dep: b, total: a + b });
+      }
+    }
+
+    // ── บล็อก C: Porter Daily Assignment (ตารางเวร) ──
+    const nm = String(row[FCOL.R_NAME] || '').trim();
+    if (nm && nm.toUpperCase() !== 'NAME' && nm.indexOf('Porter Daily') < 0) {
+      const inV  = shiftVal(row[FCOL.R_IN]);
+      const outV = shiftVal(row[FCOL.R_OUT]);
+      if (inV) {
+        const off = OFF_CODES.indexOf(inV.toUpperCase()) >= 0;
+        roster.push({
+          name:    nm,
+          in:      off ? '' : inV,
+          out:     off ? '' : outV,
+          otIn:    shiftVal(row[FCOL.R_OT_IN]),
+          otOut:   shiftVal(row[FCOL.R_OT_OUT]),
+          status:  off ? inV.toUpperCase() : 'DUTY',
+          shift:   off ? inV.toUpperCase() : (inV + '-' + outV),
+          onDuty:  off ? false : inShift(inV, outV, today),
+          onOT:    off ? false : inShift(shiftVal(row[FCOL.R_OT_IN]), shiftVal(row[FCOL.R_OT_OUT]), today)
+        });
+      }
+    }
+  }
+
+  const total = demand.reduce(function (a, d) { return a + d.total; }, 0);
+  Logger.log('PRE ' + sheet.getName() + ': ' + flights.length + ' flights, '
+    + total + ' pre-booked, roster ' + roster.length
+    + ' (on duty now ' + roster.filter(function (x) { return x.onDuty; }).length + ')');
+
+  return { tab: sheet.getName(), flights: flights, demand: demand,
+           manpower: manpower, roster: roster, total: total };
+}
+
+// ── helpers ──
+function num(v) {
+  const n = (typeof v === 'number') ? v : parseFloat(String(v || '').replace(/,/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+// ช่องเวลาในตารางเวรเป็นได้ทั้ง Date, "07:00" หรือรหัส OFF/SL/BL (#N/A = ไม่มี)
+function shiftVal(v) {
+  if (v instanceof Date && !isNaN(v)) return Utilities.formatDate(v, 'Asia/Bangkok', 'HH:mm');
+  const s = String(v == null ? '' : v).trim();
+  if (!s || s.indexOf('#') === 0) return '';
+  return s;
+}
+
+// เวลาปัจจุบัน (Bangkok) อยู่ในช่วงกะหรือไม่ — รองรับกะข้ามวัน (17:00-05:00)
+function inShift(inStr, outStr, now) {
+  const a = hhmmToMin(inStr), b = hhmmToMin(outStr);
+  if (a == null || b == null) return false;
+  const t = hhmmToMin(Utilities.formatDate(now || new Date(), 'Asia/Bangkok', 'HH:mm'));
+  if (a === b) return false;
+  return (a < b) ? (t >= a && t < b) : (t >= a || t < b);   // ข้ามเที่ยงคืน
+}
+
+function hhmmToMin(s) {
+  const m = String(s || '').match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+}
+
+// ── ช่วงเวลาปัจจุบัน + demand/manpower ของช่วงนั้น ──
+function currentWindow(pre) {
+  const now = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'HH:mm');
+  const t   = hhmmToMin(now);
+  function hit(list) {
+    for (let i = 0; i < list.length; i++) {
+      const m = String(list[i].win).match(/^(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})$/);
+      if (!m) continue;
+      const a = hhmmToMin(m[1]), b = hhmmToMin(m[2]);
+      if (a < b ? (t >= a && t < b) : (t >= a || t < b)) return list[i];
+    }
+    return null;
+  }
+  return { now: now, demand: hit(pre.demand || []), manpower: hit(pre.manpower || []) };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BOARD — รวมทุกอย่างที่หน้าแอปต้องใช้ ไว้ใน request เดียว
+// ═══════════════════════════════════════════════════════════════════
+function getBoard() {
+  const out = { time: Utilities.formatDate(new Date(), 'Asia/Bangkok', 'HH:mm'), errors: [] };
+
+  // แต่ละแหล่งพังได้อิสระ — ที่เหลือยังใช้งานต่อได้
+  try {
+    const c = getTodayCases();
+    out.cases = c.cases; out.staff = c.staff; out.caseTab = c.tab;
+  } catch (e) { out.cases = []; out.staff = []; out.errors.push('cases: ' + e.message); }
+
+  try {
+    const pre = getPreBooking();
+    out.pre      = { tab: pre.tab, flights: pre.flights, total: pre.total };
+    out.demand   = pre.demand;
+    out.manpower = pre.manpower;
+    out.roster   = pre.roster;
+    out.window   = currentWindow(pre);
+  } catch (e) {
+    out.pre = { flights: [], total: 0 }; out.demand = []; out.manpower = [];
+    out.roster = []; out.errors.push('pre: ' + e.message);
+  }
+
+  try { out.queue  = getQueue(); }    catch (e) { out.queue = [];  out.errors.push('queue: ' + e.message); }
+  try { out.repair = getWCRepair(); } catch (e) { out.repair = []; out.errors.push('repair: ' + e.message); }
+
+  if (out.errors.length) Logger.log('getBoard errors: ' + out.errors.join(' | '));
+  return out;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1059,6 +1320,25 @@ function testStaff() {
     const res = getTodayStaff();
     Logger.log('Tab: ' + res.tab + ' | Total: ' + res.staff.length);
     res.staff.forEach(function (s) { Logger.log(s.no + '. ' + s.name + ' (' + s.cases + ' เคส)'); });
+  } catch (e) {
+    Logger.log('ERROR: ' + e.message);
+  }
+}
+
+function testPre() {
+  Logger.log('=== TEST PRE-WHEELCHAIR ===');
+  try {
+    const p = getPreBooking();
+    Logger.log('Tab ' + p.tab + ' | ไฟลท์ที่มียอดจอง ' + p.flights.length + ' | รวม ' + p.total + ' เคส');
+    p.demand.forEach(function (d) { Logger.log('  demand ' + d.win + ' → ARR ' + d.arr + ' / DEP ' + d.dep); });
+    p.manpower.forEach(function (m) { Logger.log('  manpower ' + m.win + ' → SKED ' + m.sked + ' / OT ' + m.ot); });
+    Logger.log('Roster ' + p.roster.length + ' คน · เข้าเวรตอนนี้ '
+      + p.roster.filter(function (r) { return r.onDuty; }).length);
+    p.roster.slice(0, 10).forEach(function (r) {
+      Logger.log('  ' + r.name + ' · ' + r.shift + (r.onDuty ? ' ← ตอนนี้' : '') );
+    });
+    const w = currentWindow(p);
+    Logger.log('ช่วงนี้ ' + w.now + ' → demand ' + JSON.stringify(w.demand) + ' | manpower ' + JSON.stringify(w.manpower));
   } catch (e) {
     Logger.log('ERROR: ' + e.message);
   }

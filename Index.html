@@ -202,6 +202,46 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 .dmid{background:var(--yellow-lt);color:var(--yellow)}
 .dlong{background:var(--red-lt);color:var(--red)}
 
+/* NOW BAR */
+.now-bar{background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;border-radius:14px;
+  padding:12px 14px;margin-bottom:13px;box-shadow:var(--sh-lg)}
+.now-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
+.now-win{font-size:12px;font-weight:700;opacity:.75;letter-spacing:.5px}
+.now-load{font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px}
+.load-ok{background:rgba(34,197,94,.22);color:#86efac}
+.load-mid{background:rgba(234,179,8,.22);color:#fde047}
+.load-hi{background:rgba(239,68,68,.25);color:#fca5a5}
+.now-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.now-b{background:rgba(255,255,255,.08);border-radius:10px;padding:7px 4px;text-align:center}
+.now-n{font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:600}
+.now-t{font-size:9px;opacity:.7;margin-top:1px;font-weight:600}
+
+/* ROSTER */
+.rs-group{font-size:12px;font-weight:800;color:var(--gray);margin:13px 0 7px;
+  display:flex;align-items:center;gap:7px}
+.rs-pill{background:var(--blue-lt);color:var(--blue-dk);border-radius:10px;
+  padding:2px 9px;font-size:11px;font-weight:700}
+.rs{background:#fff;border-radius:11px;padding:9px 12px;margin-bottom:6px;box-shadow:var(--sh);
+  display:flex;align-items:center;gap:9px}
+.rs.now{border-left:4px solid var(--green)}
+.rs.off{opacity:.55}
+.rs-nm{flex:1;font-size:13px;font-weight:700;min-width:0}
+.rs-tm{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gray)}
+.rs-ot{font-size:10px;font-weight:700;color:var(--yellow);margin-left:4px}
+.rs-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px}
+.b-now{background:var(--green-lt);color:var(--green)}
+.b-off{background:var(--gray-lt);color:var(--gray)}
+.b-leave{background:var(--red-lt);color:var(--red)}
+
+/* FORECAST TABLE */
+.fc-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.fc-tbl th{text-align:left;font-size:10px;color:var(--gray);font-weight:700;padding:4px 5px;
+  border-bottom:1px solid var(--gray-lt)}
+.fc-tbl td{padding:5px;border-bottom:1px solid var(--bg)}
+.fc-tbl td.n{font-family:'JetBrains Mono',monospace;text-align:right;font-weight:600}
+.fc-tbl tr.cur{background:var(--blue-lt)}
+.fc-warn{color:var(--red);font-weight:700}
+
 /* LP ASSIGN BOARD */
 .lp{background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:7px;box-shadow:var(--sh);
   display:flex;align-items:center;gap:9px;border-left:4px solid var(--gray-lt);cursor:pointer}
@@ -356,6 +396,9 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
     <div class="sbox"><div class="snum cr" id="sR">0</div><div class="stxt">🔧 ซ่อม</div></div>
     <div class="sbox"><div class="snum cb" id="sT">0</div><div class="stxt">วันนี้</div></div>
   </div>
+  <!-- ช่วงเวลานี้: งานที่จองไว้ vs กำลังคน -->
+  <div class="now-bar" id="nowBar" style="display:none"></div>
+
   <!-- NEXT IN QUEUE -->
   <div class="q-banner" id="qBanner" style="display:none">
     <div class="frow" id="qShiftRowHome" style="margin-bottom:8px"></div>
@@ -371,7 +414,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 
   <div style="display:flex;justify-content:space-between;align-items:center">
     <div class="sec" style="margin:0">📋 เคสที่ LP assign วันนี้</div>
-    <button onclick="loadCases(true)" style="background:var(--blue-lt);color:var(--blue);border:none;
+    <button onclick="loadBoard(true)" style="background:var(--blue-lt);color:var(--blue);border:none;
       border-radius:8px;padding:5px 11px;font-family:Sarabun,sans-serif;font-size:11px;
       font-weight:700;cursor:pointer">↻ รีเฟรช</button>
   </div>
@@ -393,7 +436,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
   <div class="frow" id="qShiftRow"></div>
   <div class="sync-bar sync-idle" id="qStatus">⏳ กำลังโหลดคิว...</div>
   <div id="queueList"></div>
-  <button class="bbtn b-new" style="margin-top:10px;font-size:15px" onclick="fillQueueFromDuty()">👥 เติมคิวจากรายชื่อวันนี้</button>
+  <button class="bbtn b-new" style="margin-top:10px;font-size:15px" onclick="fillQueueFromDuty()">👥 เติมคิวจากตารางเวร</button>
   <button class="obtn" onclick="toggleQAdd()">➕ เพิ่มพนักงานเข้าคิวเอง</button>
   <div id="qAddBox" style="display:none;margin-top:10px">
     <input class="sbox-inp" id="qStaffQ" placeholder="🔍 ค้นหาชื่อหรือรหัส..." oninput="renderQAddGrid(this.value)">
@@ -491,6 +534,17 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
   <button class="obtn" onclick="go(2)">← เปลี่ยนรถเข็น</button>
 </div>
 
+<!-- TEAM / ROSTER -->
+<div class="page" id="pg-team">
+  <div class="shdr">
+    <div><div class="shdr-title">👥 ตารางเวรวันนี้</div>
+    <div class="shdr-sub" id="teamSub">จาก PRE-WHEELCHAIR · Porter Daily Assignment</div></div>
+  </div>
+  <div class="sync-bar sync-idle" id="teamStat">⏳ กำลังโหลดตารางเวร...</div>
+  <div id="teamBody"></div>
+  <button class="obtn" onclick="loadBoard(true)">↻ รีเฟรช</button>
+</div>
+
 <!-- SUMMARY -->
 <div class="page" id="pg-sum">
   <div class="shdr">
@@ -520,6 +574,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 
 <div class="bnav">
   <button class="bn active" id="bn0" onclick="showMain('home',this)"><span class="ico">🏠</span>หน้าหลัก</button>
+  <button class="bn" id="bnT" onclick="showMain('team',this)"><span class="ico">👥</span>ทีม</button>
   <button class="bn" id="bnQ" onclick="showMain('queue',this)"><span class="ico">🔄</span>คิว</button>
   <button class="bn" id="bnS" onclick="showMain('sum',this)"><span class="ico">📊</span>สรุป</button>
   <button class="bn" id="bn1" onclick="showMain('log',this)"><span class="ico">📋</span>ประวัติ</button>
@@ -699,9 +754,10 @@ let trips={}, log=[], cnt=1, stopCtrl=null, wcF='all';
 let queueList=[], queueLoadedAt=0, queueMode=false;
 let wcRepair={}, wcMoCtrl=null, wcLongT=null;   // สถานะซ่อม (ctrl → {note,by,since})
 let dutyStaff=[], onlyDuty=true;   // รายชื่อที่มาทำงานวันนี้ (จาก STAFF RECORD ในชีท)
-const SHIFTS=['A','B','C'];
-let curShift=localStorage.getItem('wcShift')||'A';
-if(!SHIFTS.includes(curShift))curShift='A';
+// กะมาจากตารางเวรจริงใน PRE-WHEELCHAIR (เช่น 07:00-16:00, 15:00-03:00)
+let SHIFTS=[];                       // รายการกะที่มีคนขึ้นเวรวันนี้
+let curShift=localStorage.getItem('wcShift')||'';
+let roster=[], preFlights=[], demandWin=[], manpowerWin=[], nowWin=null, preTotal=0;
 let flightCache=null;         // cache flight list
 let caseCache=null, caseCacheAt=0;  // cache case list (refresh ทุก 60 วิ)
 const CASE_TTL=60000;
@@ -725,8 +781,9 @@ function showMain(id,el){
   document.querySelectorAll('.bn').forEach(b=>b.classList.remove('active'));
   if(el)el.classList.add('active');
   if(id==='log')renderLog();
-  if(id==='home'){renderBoard();loadQueue();loadCases();}
-  if(id==='queue')loadQueue(true);
+  if(id==='home'){renderBoard();loadBoard();}
+  if(id==='queue')loadBoard();
+  if(id==='team')loadBoard();
   if(id==='sum')loadSummary();
 }
 function go(s){
@@ -915,12 +972,115 @@ async function confirmWc(){
 }
 
 // ══════════════════════════════════════════════════════════
+// BOARD — โหลดข้อมูลทั้งหมดใน request เดียว (?action=board)
+// ══════════════════════════════════════════════════════════
+let boardAt=0;
+async function loadBoard(force){
+  if(!force&&(Date.now()-boardAt)<45000){paintBoard();return;}
+  const ts=document.getElementById('teamStat');
+  if(ts){ts.className='sync-bar sync-busy';ts.textContent='⏳ กำลังโหลด...';}
+  try{
+    const r=await fetch(GAS_URL+'?action=board');
+    const d=await r.json();
+    if(!d.ok)throw new Error(d.error||'board failed');
+    boardAt=Date.now();
+    todayCases=d.cases||[];caseCache=todayCases;caseCacheAt=Date.now();
+    dutyStaff=d.staff||[];
+    roster=d.roster||[];
+    preFlights=(d.pre&&d.pre.flights)||[];
+    preTotal=(d.pre&&d.pre.total)||0;
+    demandWin=d.demand||[];manpowerWin=d.manpower||[];nowWin=d.window||null;
+    if(d.queue)queueList=d.queue;
+    wcRepair={};(d.repair||[]).forEach(w=>{wcRepair[w.ctrl]=w;});
+    // กะทั้งหมดที่มีคนขึ้นเวรวันนี้
+    SHIFTS=[...new Set(roster.filter(x=>x.status==='DUTY').map(x=>x.shift))].sort();
+    if(!SHIFTS.includes(curShift))curShift=(roster.find(x=>x.onDuty)||{}).shift||SHIFTS[0]||'';
+    if((d.errors||[]).length)console.warn('board partial:',d.errors);
+    paintBoard();
+  }catch(e){
+    console.warn('board:',e);
+    if(ts){ts.className='sync-bar sync-err';ts.textContent='⚠️ โหลดไม่ได้ — ตรวจสอบการเชื่อมต่อ';}
+  }
+}
+
+function paintBoard(){
+  renderNowBar();renderLPBoard();renderQueue();renderQueueBanner();renderTeam();updateStats();
+  if(document.getElementById('pg-s2').classList.contains('active'))renderWC();
+}
+
+// ── แถบ "ช่วงเวลานี้" บนหน้าหลัก ──
+function renderNowBar(){
+  const el=document.getElementById('nowBar');
+  if(!el)return;
+  if(!nowWin||(!nowWin.demand&&!nowWin.manpower)){el.style.display='none';return;}
+  const d=nowWin.demand||{arr:0,dep:0,total:0};
+  const m=nowWin.manpower||{sked:0,ot:0};
+  const onNow=roster.filter(r=>r.onDuty).length;
+  const cap=(m.sked||0)+(m.ot||0);
+  const load=cap?d.total/cap:0;
+  const cls=load>1.2?'load-hi':(load>0.8?'load-mid':'load-ok');
+  const txt=cap?(load>1.2?'งานหนัก':(load>0.8?'ค่อนข้างแน่น':'รับไหว')):'—';
+  el.style.display='block';
+  el.innerHTML=`<div class="now-top">
+      <span class="now-win">⏱ ช่วง ${(nowWin.demand||nowWin.manpower).win} · ${nowWin.now}</span>
+      <span class="now-load ${cls}">${txt}${cap?' · '+(d.total||0)+'/'+cap:''}</span>
+    </div>
+    <div class="now-grid">
+      <div class="now-b"><div class="now-n">${d.arr||0}</div><div class="now-t">จองขาเข้า</div></div>
+      <div class="now-b"><div class="now-n">${d.dep||0}</div><div class="now-t">จองขาออก</div></div>
+      <div class="now-b"><div class="now-n">${onNow}</div><div class="now-t">เข้าเวรตอนนี้</div></div>
+      <div class="now-b"><div class="now-n">${Object.keys(trips).length}</div><div class="now-t">กำลังบริการ</div></div>
+    </div>`;
+}
+
+// ── หน้า "ทีม" — ตารางเวรจริง ──
+function renderTeam(){
+  const el=document.getElementById('teamBody');
+  const st=document.getElementById('teamStat');
+  if(!el)return;
+  if(!roster.length){
+    if(st){st.className='sync-bar sync-idle';st.textContent='ไม่พบตารางเวรวันนี้ใน PRE-WHEELCHAIR';}
+    el.innerHTML='<div class="empty" style="padding:24px"><div style="font-size:34px;margin-bottom:6px">👥</div><div style="font-size:13px">ยังไม่มีตารางเวรวันนี้</div></div>';
+    return;
+  }
+  const duty=roster.filter(r=>r.status==='DUTY');
+  const onNow=duty.filter(r=>r.onDuty);
+  if(st){st.className='sync-bar sync-ok';
+    st.textContent='เข้าเวรตอนนี้ '+onNow.length+' คน · ขึ้นเวรวันนี้ '+duty.length+' · ลา/หยุด '+(roster.length-duty.length);}
+
+  const groups={};
+  duty.forEach(r=>{(groups[r.shift]=groups[r.shift]||[]).push(r);});
+  const off=roster.filter(r=>r.status!=='DUTY');
+
+  let html=Object.keys(groups).sort().map(sh=>{
+    const list=groups[sh];
+    const live=list.filter(r=>r.onDuty).length;
+    return `<div class="rs-group">กะ ${sh} <span class="rs-pill">${list.length} คน</span>${live?`<span class="rs-pill" style="background:var(--green-lt);color:var(--green)">🟢 ${live} เข้าเวรอยู่</span>`:''}</div>`
+      +list.map(r=>`<div class="rs ${r.onDuty?'now':''}">
+        <div class="rs-nm">${r.name}${r.onOT?'<span class="rs-ot">OT</span>':''}</div>
+        <span class="rs-tm">${r.in}-${r.out}${r.otIn?' +OT '+r.otIn+'-'+r.otOut:''}</span>
+        <span class="rs-badge ${r.onDuty?'b-now':'b-off'}">${r.onDuty?'เข้าเวร':'ยังไม่ถึงกะ'}</span>
+      </div>`).join('');
+  }).join('');
+
+  if(off.length){
+    html+=`<div class="rs-group">ลา / วันหยุด <span class="rs-pill">${off.length} คน</span></div>`
+      +off.map(r=>`<div class="rs off">
+        <div class="rs-nm">${r.name}</div>
+        <span class="rs-badge b-leave">${r.status}</span>
+      </div>`).join('');
+  }
+  el.innerHTML=html;
+}
+
+// ══════════════════════════════════════════════════════════
 // SUMMARY — สรุปเคสวันนี้ (ตัวเลขชุดเดียวกับบล็อกสรุปในชีท)
 // ══════════════════════════════════════════════════════════
 let sumData=null,sumAt=0;
 async function loadSummary(force){
   const el=document.getElementById('sumBody');
   if(!el)return;
+  loadBoard();
   if(!force&&sumData&&(Date.now()-sumAt)<60000){renderSummary();return;}
   el.innerHTML='<div class="fl-loading">⏳ กำลังโหลดสรุป...</div>';
   try{
@@ -976,9 +1136,46 @@ function renderSummary(){
       <div class="sum-b"><div class="sum-n cb">${d.onDuty?(d.total/d.onDuty).toFixed(1):'—'}</div><div class="sum-t">เคส/คน</div></div>
     </div>
   </div>
+  ${d.preBooked!=null?`<div class="sum-card">
+    <div class="sum-h">จองล่วงหน้า vs เกิดจริง</div>
+    <div class="sum-grid">
+      <div class="sum-b"><div class="sum-n cb">${d.preBooked}</div><div class="sum-t">จองล่วงหน้า</div></div>
+      <div class="sum-b"><div class="sum-n cg">${d.total}</div><div class="sum-t">เคสจริง</div></div>
+      <div class="sum-b"><div class="sum-n ${d.total>d.preBooked?'cr':'cy'}">${d.preBooked?(d.total-d.preBooked>=0?'+':'')+(d.total-d.preBooked):'—'}</div><div class="sum-t">ส่วนต่าง</div></div>
+    </div>
+    ${d.rosterAll?`<div style="margin-top:9px;font-size:12px;color:var(--gray)">
+      ตารางเวร: ขึ้นเวร ${d.rosterAll-d.rosterOff} · ลา/หยุด ${d.rosterOff} · เข้าเวรตอนนี้ ${d.rosterOn}</div>`:''}
+  </div>`:''}
+  ${(d.demand&&d.demand.length)?`<div class="sum-card">
+    <div class="sum-h">งานจอง vs กำลังคน ต่อช่วงเวลา</div>
+    <table class="fc-tbl"><thead><tr>
+      <th>ช่วงเวลา</th><th style="text-align:right">เข้า</th><th style="text-align:right">ออก</th>
+      <th style="text-align:right">รวม</th><th style="text-align:right">คน</th><th style="text-align:right">เคส/คน</th>
+    </tr></thead><tbody>${d.demand.map(w=>{
+      const mp=(d.manpower||[]).find(m=>m.win===w.win)||{sked:0,ot:0};
+      const cap=(mp.sked||0)+(mp.ot||0);
+      const per=cap?(w.total/cap):0;
+      const cur=d.window&&d.window.demand&&d.window.demand.win===w.win;
+      return `<tr class="${cur?'cur':''}">
+        <td>${w.win}${cur?' ●':''}</td><td class="n">${w.arr}</td><td class="n">${w.dep}</td>
+        <td class="n">${w.total}</td><td class="n">${cap||'—'}</td>
+        <td class="n ${per>1.2?'fc-warn':''}">${cap?per.toFixed(1):'—'}</td></tr>`;
+    }).join('')}</tbody></table>
+  </div>`:''}
   <div class="sum-card"><div class="sum-h">ประเภท Services</div>${barList(d.bySvc,'var(--blue)')}</div>
   <div class="sum-card"><div class="sum-h">แยกตามสายการบิน</div>${barList(d.byAirline,'var(--green)')}</div>
-  <div class="sum-card"><div class="sum-h">เคสต่อคน (จากชีท)</div>${barList(d.byStaff,'var(--yellow)')}</div>`;
+  <div class="sum-card"><div class="sum-h">เคสต่อคน (จากชีท)</div>${barList(d.byStaff,'var(--yellow)')}</div>
+  ${preFlights.length?`<div class="sum-card">
+    <div class="sum-h">ไฟลท์ที่มียอดจองล่วงหน้า (${preFlights.length})</div>
+    <table class="fc-tbl"><thead><tr>
+      <th>ไฟลท์</th><th>STA/STD</th><th style="text-align:right">เข้า</th>
+      <th style="text-align:right">ออก</th><th style="text-align:right">รวม</th>
+    </tr></thead><tbody>${preFlights.map(f=>`<tr>
+      <td><b>${f.airline}${String(f.fltno).split('/')[0]}</b><div style="font-size:10px;color:var(--gray)">${f.routing}</div></td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${f.sta||'—'}<br>${f.std||'—'}</td>
+      <td class="n">${f.arr.total||0}</td><td class="n">${f.dep.total||0}</td>
+      <td class="n"><b>${f.total}</b></td></tr>`).join('')}</tbody></table>
+  </div>`:''}`;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1003,15 +1200,26 @@ function setShift(f){
   if(box&&box.style.display!=='none')renderQAddGrid(document.getElementById('qStaffQ').value);
 }
 function shiftChipsHTML(){
-  return SHIFTS.map(f=>{
+  const live=`<button class="fc ${curShift==='NOW'?'act':''}" onclick="setShift('NOW')">🟢 เข้าเวรตอนนี้</button>`;
+  return live+SHIFTS.map(f=>{
     const cnt=queueList.filter(q=>q.shift===f).length;
-    return `<button class="fc ${curShift===f?'act':''}" onclick="setShift('${f}')">กะ ${f}${cnt?' ('+cnt+')':''}</button>`;
+    return `<button class="fc ${curShift===f?'act':''}" onclick="setShift('${f}')">${f}${cnt?' ('+cnt+')':''}</button>`;
   }).join('');
+}
+
+// ชื่อในตารางเวรที่กำลังเข้าเวรอยู่ตอนนี้ (normalize ไว้เทียบกับคิว)
+function onDutyNames(){
+  return new Set(roster.filter(r=>r.onDuty).map(r=>normName(r.name)));
 }
 
 // เรียงคิวในกะ: เคสน้อยสุดขึ้นก่อน → เสมอกันคนที่ว่างก่อน/เข้าคิวก่อนขึ้นก่อน
 function sortedShiftQueue(shift){
-  return queueList.filter(q=>(q.shift||'A')===shift)
+  if(shift==='NOW'){
+    const on=onDutyNames();
+    return queueList.filter(q=>on.has(normName(q.nick))||on.has(normName(ROMAN[q.sid]||'')))
+      .sort((a,b)=>((a.trips||0)-(b.trips||0))||((a.order||0)-(b.order||0)));
+  }
+  return queueList.filter(q=>(q.shift||'')===shift)
     .sort((a,b)=>((a.trips||0)-(b.trips||0))||((a.order||0)-(b.order||0)));
 }
 
@@ -1029,8 +1237,8 @@ function renderQueueBanner(){
   b.style.display='block';
   const hc=document.getElementById('qShiftRowHome');
   if(hc)hc.innerHTML=shiftChipsHTML();
-  document.getElementById('qShiftLbl').textContent=curShift;
-  document.getElementById('qNextName').textContent=n?('👷 '+n.nick+' ('+(n.trips||0)+' เคส)'):'— ไม่มีคนว่างในกะ '+curShift+' —';
+  document.getElementById('qShiftLbl').textContent=(curShift==='NOW'?'เข้าเวรตอนนี้':curShift||'—');
+  document.getElementById('qNextName').textContent=n?('👷 '+n.nick+' ('+(n.trips||0)+' เคส)'):'— ไม่มีคนว่าง —';
   const busySids=new Set(Object.values(trips).map(t=>t.sid));
   const rest=sortedShiftQueue(curShift).filter(q=>q.status!=='กำลังบริการ'&&!busySids.has(q.sid)&&(!n||q.sid!==n.sid)).slice(0,3);
   document.getElementById('qNextRest').innerHTML=rest.length
@@ -1044,9 +1252,10 @@ function renderQueue(){
   if(!el)return;
   if(sr)sr.innerHTML=shiftChipsHTML();
   const list=sortedShiftQueue(curShift);
-  if(st){st.className='sync-bar sync-idle';st.textContent='กะ '+curShift+' · '+list.length+' คน · เรียงตามเคสน้อยสุดอัตโนมัติ';}
+  if(st){st.className='sync-bar sync-idle';
+    st.textContent=(curShift==='NOW'?'เข้าเวรตอนนี้':'กะ '+curShift)+' · '+list.length+' คน · เรียงตามเคสน้อยสุดอัตโนมัติ';}
   if(!list.length){
-    el.innerHTML='<div class="empty"><div style="font-size:42px;margin-bottom:8px">🔄</div><div style="font-size:14px">ยังไม่มีคิวกะ '+curShift+'<br>กด "เพิ่มพนักงานเข้าคิว" ด้านล่าง</div></div>';
+    el.innerHTML='<div class="empty"><div style="font-size:42px;margin-bottom:8px">🔄</div><div style="font-size:14px">ยังไม่มีคิวในกะนี้<br>กด "เติมคิวจากตารางเวร" ด้านล่าง</div></div>';
     return;
   }
   const n=nextInQueue();
@@ -1091,25 +1300,33 @@ function renderQAddGrid(q){
 function addToQ(id){
   const s=STAFF.find(x=>x.id===id);if(!s)return;
   const maxOrd=queueList.reduce((m,q)=>Math.max(m,q.order||0),0);
-  queueList.push({sid:s.id,nick:s.nick,shift:curShift,status:'ว่าง',trips:0,order:maxOrd+1});
+  const rr=roster.find(r=>normName(r.name)===normName(ROMAN[s.id]||s.nick));
+  queueList.push({sid:s.id,nick:s.nick,shift:(rr&&rr.shift)||(curShift==='NOW'?'':curShift),
+    status:'ว่าง',trips:0,order:maxOrd+1});
   renderQueue();renderQueueBanner();renderQAddGrid(document.getElementById('qStaffQ').value);
   toast('➕ '+s.nick+' เข้าคิวกะ '+curShift,'tok');
   saveQueue();
 }
 
 // เติมคิวกะปัจจุบันจากรายชื่อที่มาทำงานวันนี้ (ชีท STAFF RECORD)
+// เติมคิวจากตารางเวรจริง (PRE-WHEELCHAIR) — กะไหนก็ได้ตามที่เลือก
 function fillQueueFromDuty(){
-  if(!dutyStaff.length){toast('ยังไม่มีรายชื่อวันนี้ในชีท','terr');return;}
+  const src=roster.filter(r=>r.status==='DUTY'&&(curShift==='NOW'?r.onDuty:(!curShift||r.shift===curShift)));
+  if(!src.length){toast(roster.length?'ไม่มีคนในกะนี้':'ยังไม่มีตารางเวรวันนี้','terr');return;}
   const inQ=new Set(queueList.map(q=>q.sid));
+  const cases={};dutyStaff.forEach(d=>{cases[normName(d.name)]=d.cases||0;});
   let n=0,maxOrd=queueList.reduce((m,q)=>Math.max(m,q.order||0),0);
-  dutyStaffList().forEach(s=>{
-    if(!s.id||inQ.has(s.id))return;
-    queueList.push({sid:s.id,nick:s.nick,shift:curShift,status:'ว่าง',trips:s.sheetCases||0,order:++maxOrd});
+  src.forEach(r=>{
+    const m=staffByName(r.name);
+    const sid=m?m.id:('X-'+normName(r.name));
+    if(inQ.has(sid))return;
+    queueList.push({sid:sid,nick:m?m.nick:r.name,shift:r.shift,status:'ว่าง',
+      trips:cases[normName(r.name)]||0,order:++maxOrd});
     n++;
   });
   if(!n){toast('ทุกคนอยู่ในคิวแล้ว','');return;}
   renderQueue();renderQueueBanner();saveQueue();
-  toast('👥 เพิ่ม '+n+' คนเข้าคิวกะ '+curShift,'tok');
+  toast('👥 เพิ่ม '+n+' คนเข้าคิว','tok');
 }
 
 let _qSaveT=null;
@@ -1128,10 +1345,10 @@ function saveQueue(){
 // ── รับเคสตามคิว: คนถัดไป + เคสค้างเก่าสุด อัตโนมัติ ──
 function startQueueFlow(){
   const n=nextInQueue();
-  if(!n){toast('ไม่มีคนว่างในคิวกะ '+curShift,'terr');return;}
+  if(!n){toast('ไม่มีคนว่างในคิว','terr');return;}
   const s=STAFF.find(x=>x.id===n.sid)||{id:n.sid,nick:n.nick,name:n.nick};
   selS=s;queueMode=true;
-  toast('🎯 ตามคิวกะ '+curShift+': '+s.nick+' ('+(n.trips||0)+' เคส)','tok');
+  toast('🎯 ตามคิว: '+s.nick+' ('+(n.trips||0)+' เคส)','tok');
   go(2);
 }
 
@@ -1401,7 +1618,7 @@ function startService(){
   selS=null;selW=null;selFlight=null;selCase=null;
   caseCache=null; // ให้โหลดเคสใหม่รอบหน้า (สถานะรับเคสเปลี่ยนแล้ว)
   updateStats();go(0);
-  setTimeout(()=>{loadQueue(true);loadCases(true);},2500);
+  setTimeout(()=>loadBoard(true),2500);
 }
 
 function openStop(ctrl){
@@ -1436,7 +1653,7 @@ function confirmStop(){
   if(qe2){qe2.status='ว่าง';qe2.order=queueList.reduce((m,q)=>Math.max(m,q.order||0),0)+1;}
   flash();toast('🔴 จบแล้ว · '+t.snick+' · '+t.duration+' น.','tok');
   updateStats();renderBoard();renderQueueBanner();renderLPBoard();
-  setTimeout(()=>{loadQueue(true);loadCases(true);},2500);
+  setTimeout(()=>loadBoard(true),2500);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1552,9 +1769,7 @@ function flash(){const el=document.getElementById('flash');el.classList.add('sho
 function toast(m,c=''){const t=document.getElementById('toast');t.textContent=m;t.className='show '+c;clearTimeout(window._tt);window._tt=setTimeout(()=>t.className='',2800);}
 
 updateStats();
-loadQueue();
-loadCases();
-loadWcStatus();
+loadBoard(true);
 </script>
 </body>
 </html>
