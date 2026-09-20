@@ -324,6 +324,18 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 .role-sw{border:none;background:var(--gray-lt);color:var(--gray);border-radius:8px;
   padding:5px 10px;font-family:Sarabun,sans-serif;font-size:11px;font-weight:700;cursor:pointer}
 
+/* ── STALE — งานที่เปิดค้างไว้ ─────────────────────────────────── */
+.stale-bar{background:var(--red-lt);border:2px solid #fca5a5;border-radius:13px;
+  padding:12px 13px;margin-bottom:12px}
+.stale-t{font-size:13px;font-weight:800;color:var(--red)}
+.stale-d{font-size:11px;color:var(--gray);margin-top:3px;line-height:1.6}
+.stale-li{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);
+  margin-top:5px;padding-left:2px}
+.stale-btn{width:100%;margin-top:10px;border:none;background:var(--red);color:#fff;
+  border-radius:10px;padding:10px;font-family:Sarabun,sans-serif;font-size:13px;
+  font-weight:700;cursor:pointer}
+.stale-btn:disabled{opacity:.5;cursor:default}
+
 /* ── MY JOBS — การ์ดงานของ porter ─────────────────────────────── */
 .mj{background:#fff;border-radius:14px;padding:13px;margin-bottom:9px;
   box-shadow:var(--sh);border-left:4px solid var(--blue)}
@@ -530,6 +542,9 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
     <div class="sbox"><div class="snum cr" id="sR">0</div><div class="stxt">🔧 ซ่อม</div></div>
     <div class="sbox"><div class="snum cb" id="sT">0</div><div class="stxt">วันนี้</div></div>
   </div>
+  <!-- งานที่เปิดค้างไว้ (ลืมกดจบ / แอปปิดระหว่างงาน) -->
+  <div class="stale-bar" id="staleBar" style="display:none"></div>
+
   <!-- ช่วงเวลานี้: งานที่จองไว้ vs กำลังคน -->
   <div class="now-bar" id="nowBar" style="display:none"></div>
 
@@ -930,6 +945,7 @@ let selS=null, selW=null, selFlight=null, selCase=null;
 let trips={}, log=[], cnt=1, stopCtrl=null, wcF='all';
 let queueList=[], queueLoadedAt=0, queueMode=false;
 let wcRepair={}, wcMoCtrl=null, wcLongT=null;   // สถานะซ่อม (ctrl → {note,by,since})
+let staleTrips=[], staleBusy=false;   // งานที่เปิดค้างไว้เกิน 12 ชม. — LP กดปิดได้
 let dutyStaff=[], onlyDuty=true;   // รายชื่อที่มาทำงานวันนี้ (จาก STAFF RECORD ในชีท)
 // กะมาจากตารางเวรจริงใน PRE-WHEELCHAIR (เช่น 07:00-16:00, 15:00-03:00)
 let SHIFTS=[];                       // รายการกะที่มีคนขึ้นเวรวันนี้
@@ -1278,6 +1294,7 @@ async function loadBoard(force){
     demandWin=d.demand||[];manpowerWin=d.manpower||[];nowWin=d.window||null;
     if(d.queue)queueList=d.queue;
     adoptActive(d.active||[]);
+    staleTrips=d.stale||[];
     wcRepair={};(d.repair||[]).forEach(w=>{wcRepair[w.ctrl]=w;});
     // กะทั้งหมดที่มีคนขึ้นเวรวันนี้
     SHIFTS=[...new Set(roster.filter(x=>x.status==='DUTY').map(x=>x.shift))].sort();
@@ -1291,7 +1308,7 @@ async function loadBoard(force){
 }
 
 function paintBoard(){
-  renderNowBar();renderLPBoard();renderQueue();renderQueueBanner();renderTeam();
+  renderStale();renderNowBar();renderLPBoard();renderQueue();renderQueueBanner();renderTeam();
   renderMe();renderAssign();updateStats();
   if(document.getElementById('pg-s2').classList.contains('active'))renderWC();
 }
@@ -2356,6 +2373,53 @@ function confirmStop(){
   flash();toast('🔴 จบแล้ว · '+t.snick+' · '+t.duration+' น.','tok');
   updateStats();renderBoard();renderMe();renderQueueBanner();renderLPBoard();
   setTimeout(()=>loadBoard(true),2500);
+}
+
+// ══════════════════════════════════════════════════════════
+// STALE TRIPS — งานที่เปิดค้างไว้ (ลืมกดจบ / แอปปิดกลางคัน)
+// ══════════════════════════════════════════════════════════
+// รถเข็นของงานพวกนี้จะถูกกันไว้ไม่ให้ใครหยิบไปใช้ ต้องมีคนกดปิด
+// ให้เฉพาะ LP กดได้ — porter ไม่ควรไปปิดงานของคนอื่น
+function renderStale(){
+  const el=document.getElementById('staleBar');
+  if(!el)return;
+  if(!isLP()||!staleTrips.length){el.style.display='none';return;}
+  el.style.display='block';
+  const list=staleTrips.slice(0,5).map(t=>
+    `<div class="stale-li">• ${t.ctrl} · ${t.snick||t.sid} · ${t.date} ${t.startTime}`
+    +`${t.ageHours!=null?' ('+t.ageHours+' ชม.)':''}${t.flight?' · ✈'+t.flight:''}</div>`).join('');
+  const more=staleTrips.length>5?`<div class="stale-li">• …อีก ${staleTrips.length-5} รายการ</div>`:'';
+  el.innerHTML=`<div class="stale-t">⚠ มีงานเปิดค้างไว้ ${staleTrips.length} รายการ</div>
+    <div class="stale-d">เริ่มมานานกว่า 12 ชม. แล้วไม่มีใครกดจบ — รถเข็นพวกนี้ถูกกันไว้ใช้ไม่ได้</div>
+    ${list}${more}
+    <button class="stale-btn" id="staleBtn" onclick="closeStale()">ปิดงานค้างทั้งหมด · ปลดล็อกรถเข็น</button>`;
+}
+
+async function closeStale(){
+  if(staleBusy||!staleTrips.length)return;
+  const n=staleTrips.length;
+  if(!confirm('ปิดงานค้าง '+n+' รายการ แล้วปลดล็อกรถเข็น?\n\n'
+    +'ระบบจะไม่เดาเวลาจบ (ไม่มีใครรู้ว่าจบจริงตอนไหน) — แถวใน TripLog ยังอยู่ครบ '
+    +'แค่เปลี่ยนสถานะเป็น "ค้าง — ไม่ได้กดจบ"'))return;
+  const btn=document.getElementById('staleBtn');
+  staleBusy=true; if(btn){btn.disabled=true;btn.textContent='⏳ กำลังปิด...';}
+  try{
+    const by=isLP()?'LP (แอป)':(me()?me().nick:'แอป');
+    const r=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'close_stale',by})});
+    const d=await r.json();
+    if(!d.ok)throw new Error(d.error||'ปิดไม่สำเร็จ');
+    toast('✅ ปิดงานค้าง '+(d.closed||[]).length+' รายการ · ปลดล็อกรถเข็นแล้ว','tok');
+    staleTrips=[];
+    await loadBoard(true);
+  }catch(e){
+    toast('⚠ '+e.message,'terr');
+    console.warn('close_stale:',e);
+  }finally{
+    staleBusy=false;
+    const b=document.getElementById('staleBtn');
+    if(b){b.disabled=false;b.textContent='ปิดงานค้างทั้งหมด · ปลดล็อกรถเข็น';}
+  }
 }
 
 // ══════════════════════════════════════════════════════════
