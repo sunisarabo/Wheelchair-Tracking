@@ -1,0 +1,99 @@
+# Auto-deploy โค้ดขึ้น Google Apps Script ด้วย clasp
+#
+# ทำงานเมื่อ: merge เข้า main (เฉพาะเมื่อ Code.gs / Index.html / manifest เปลี่ยน)
+#             หรือกด Run workflow เอง
+#
+# ── Secrets ที่ต้องตั้งใน repo (Settings → Secrets and variables → Actions) ──
+#  CLASPRC_JSON      : เนื้อหาไฟล์ ~/.clasprc.json ทั้งไฟล์
+#                      (ได้จากรัน `npx @google/clasp login` บนเครื่องตัวเองครั้งเดียว)
+#  GAS_SCRIPT_ID     : Script ID (Apps Script → ⚙ Project Settings → Script ID)
+#  GAS_DEPLOYMENT_ID : (ไม่บังคับ) Deployment ID ของ Web App
+#                      (Deploy → Manage deployments → คัดลอก ID)
+#                      ตั้งไว้ = URL /exec เดิมได้โค้ดใหม่ทันที ไม่ต้องกด deploy เอง
+
+name: Deploy to Apps Script
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Code.gs'
+      - 'Index.html'
+      - 'appsscript.json'
+      - '.github/workflows/deploy-gas.yml'
+  workflow_dispatch:
+
+# กัน deploy ซ้อนกันเวลา push ติด ๆ กัน
+concurrency:
+  group: gas-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: ตรวจ secrets ก่อน
+        env:
+          CLASPRC: ${{ secrets.CLASPRC_JSON }}
+          SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
+        run: |
+          missing=0
+          if [ -z "$CLASPRC" ]; then
+            echo "::error::ยังไม่ได้ตั้ง secret CLASPRC_JSON — รัน 'npx @google/clasp login' บนเครื่องตัวเอง แล้วเอาเนื้อหา ~/.clasprc.json มาใส่"
+            missing=1
+          fi
+          if [ -z "$SCRIPT_ID" ]; then
+            echo "::error::ยังไม่ได้ตั้ง secret GAS_SCRIPT_ID — ดูใน Apps Script → Project Settings → Script ID"
+            missing=1
+          fi
+          [ "$missing" = "0" ]
+
+      - name: ตรวจ syntax ของโค้ดก่อน deploy
+        run: |
+          cp Code.gs /tmp/Code.check.js
+          node --check /tmp/Code.check.js
+          # ดึง <script> ใน Index.html ออกมาเช็คแยก
+          sed -n '/^<script>$/,/^<\/script>$/p' Index.html | sed '1d;$d' > /tmp/app.check.js
+          node --check /tmp/app.check.js
+          echo "✅ syntax ผ่านทั้ง Code.gs และ Index.html"
+
+      - name: ติดตั้ง clasp
+        run: npm install -g @google/clasp
+
+      - name: เขียน credential ของ clasp
+        env:
+          CLASPRC: ${{ secrets.CLASPRC_JSON }}
+        run: printf '%s' "$CLASPRC" > ~/.clasprc.json
+
+      - name: เตรียมไฟล์ให้ clasp
+        env:
+          SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
+        run: |
+          mkdir -p dist
+          cp Code.gs dist/Code.js
+          cp Index.html dist/Index.html
+          cp appsscript.json dist/appsscript.json
+          printf '{"scriptId":"%s","rootDir":"dist"}' "$SCRIPT_ID" > .clasp.json
+
+      - name: Push โค้ดขึ้น Apps Script
+        run: clasp push -f
+
+      - name: อัปเดต Web App deployment (URL เดิม)
+        if: ${{ secrets.GAS_DEPLOYMENT_ID != '' }}
+        run: clasp deploy -i "${{ secrets.GAS_DEPLOYMENT_ID }}" -d "auto-deploy ${{ github.sha }}"
+
+      - name: สรุปผล
+        run: |
+          echo "### ✅ Deploy สำเร็จ" >> $GITHUB_STEP_SUMMARY
+          echo "commit \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ secrets.GAS_DEPLOYMENT_ID }}" ]; then
+            echo "อัปเดต Web App deployment แล้ว — URL \`/exec\` เดิมได้โค้ดใหม่ทันที" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ ยังไม่ได้ตั้ง \`GAS_DEPLOYMENT_ID\` — โค้ดใน editor อัปเดตแล้ว แต่ Web App ยังเสิร์ฟเวอร์ชันเดิมจนกว่าจะกด Deploy เอง" >> $GITHUB_STEP_SUMMARY
+          fi

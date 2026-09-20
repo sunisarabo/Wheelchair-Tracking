@@ -121,6 +121,29 @@ API แยกยังใช้ได้: `?action=pre` · `?action=roster` · `
   (นับเคส +1 ทำให้ลำดับถัดไปเป็นคนที่เคสน้อยกว่าโดยอัตโนมัติ)
 - กะที่เลือกจำต่อเครื่อง (localStorage) · ยังเริ่มงานแบบเลือกเองได้ตามเดิม
 
+## Auto-deploy ขึ้น Apps Script
+
+merge เข้า `main` เมื่อไหร่ GitHub Actions จะ push โค้ดขึ้น Apps Script ให้เอง
+(workflow: `.github/workflows/deploy-gas.yml`) — ก่อนใช้ ตั้งค่าครั้งเดียว 3 ขั้น:
+
+1. **เปิด Apps Script API** ที่ https://script.google.com/home/usersettings
+2. บนเครื่องตัวเอง รัน `npx @google/clasp login` แล้วเปิดไฟล์ `~/.clasprc.json`
+   คัดลอกเนื้อหา**ทั้งไฟล์**
+3. เพิ่ม Secrets ที่ repo → Settings → Secrets and variables → Actions:
+
+   | Secret | ค่า |
+   |---|---|
+   | `CLASPRC_JSON` | เนื้อหาไฟล์ `~/.clasprc.json` จากข้อ 2 |
+   | `GAS_SCRIPT_ID` | Script ID (Apps Script → ⚙ Project Settings) |
+   | `GAS_DEPLOYMENT_ID` | *(แนะนำ)* Deployment ID ของ Web App — ตั้งแล้ว URL `/exec` เดิมได้โค้ดใหม่ทันที |
+
+workflow จะ **ตรวจ syntax ของ `Code.gs` และ `Index.html` ก่อน** ถ้าพังจะหยุด ไม่ push
+ของเสียขึ้น production · ถ้าไม่ตั้ง `GAS_DEPLOYMENT_ID` โค้ดใน editor จะอัปเดต
+แต่ Web App ยังเสิร์ฟเวอร์ชันเดิมจนกว่าจะกด Deploy เอง
+
+> `appsscript.json` ใน repo คือ manifest ของโปรเจกต์ (Asia/Bangkok, V8,
+> Web App: execute as me / anyone) — แก้ที่นี่แล้ว deploy ตามปกติ
+
 ## วิธีติดตั้ง / อัปเดต
 
 1. เปิดไฟล์ "WC Tracker Log" → Extensions → Apps Script
