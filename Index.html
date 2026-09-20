@@ -28,7 +28,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 .bnav{position:fixed;bottom:0;left:0;right:0;background:#fff;
   border-top:2px solid var(--gray-lt);display:flex;z-index:100;
   padding-bottom:env(safe-area-inset-bottom)}
-.bn{flex:1;padding:10px 4px 8px;display:flex;flex-direction:column;align-items:center;
+.bn{flex:1;padding:9px 3px 7px;min-height:58px;display:flex;flex-direction:column;align-items:center;
   gap:2px;cursor:pointer;color:var(--gray);font-size:11px;font-weight:600;
   border:none;background:none}
 .bn.active{color:var(--blue)}
@@ -40,7 +40,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
 .sbox{background:#fff;border-radius:12px;padding:11px 6px;text-align:center;box-shadow:var(--sh)}
 .snum{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600}
-.stxt{font-size:10px;color:var(--gray);margin-top:2px;font-weight:600}
+.stxt{font-size:11px;color:var(--gray);margin-top:2px;font-weight:600}
 .cb{color:var(--blue)}.cg{color:var(--green)}.cy{color:var(--yellow)}.cr{color:var(--red)}
 
 .sec{font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;
@@ -89,22 +89,22 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 
 /* WC */
 .frow{display:flex;gap:6px;margin-bottom:9px;overflow-x:auto;padding-bottom:3px}
-.fc{padding:5px 11px;border-radius:20px;border:2px solid var(--gray-lt);background:#fff;
+.fc{padding:8px 14px;border-radius:20px;border:2px solid var(--gray-lt);background:#fff;
   font-size:12px;font-weight:600;color:var(--gray);cursor:pointer;white-space:nowrap}
 .fc.act{border-color:var(--blue);background:var(--blue-lt);color:var(--blue)}
 
-.wc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.wc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .wi{background:#fff;border:2px solid var(--gray-lt);border-radius:10px;
   padding:9px 4px;text-align:center;cursor:pointer;transition:all .15s;position:relative}
 .wi:active{transform:scale(0.93)}
 .wi.sel{border-color:var(--blue);background:var(--blue-lt)}
 .wi.inuse{border-color:var(--yellow);background:var(--yellow-lt)}
 .wi.overdue{border-color:var(--red);background:var(--red-lt)}
-.w-num{font-size:14px;font-weight:800}
+.w-num{font-size:19px;font-weight:800;line-height:1.1}
 .wi.inuse .w-num{color:var(--yellow)}
 .wi.overdue .w-num{color:var(--red)}
 .wi.sel .w-num{color:var(--blue-dk)}
-.w-type{font-size:9px;color:var(--gray);margin-top:1px}
+.w-type{font-size:10px;color:var(--gray);margin-top:2px}
 .w-t{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--yellow);margin-top:2px}
 .wi.overdue .w-t{color:var(--red)}
 .w-dot{width:7px;height:7px;border-radius:50%;position:absolute;top:5px;right:5px}
@@ -324,6 +324,24 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 .role-sw{border:none;background:var(--gray-lt);color:var(--gray);border-radius:8px;
   padding:5px 10px;font-family:Sarabun,sans-serif;font-size:11px;font-weight:700;cursor:pointer}
 
+/* ── ปุ่มหลักบนการ์ดงาน — กดครั้งเดียวได้รถเข็นคันเดิม ─────────── */
+.mj-go{display:flex;gap:7px;margin-top:11px}
+.mj-go .bbtn{margin:0}
+.mj-alt{flex:0 0 auto;width:auto;padding:15px 14px;border-radius:14px;border:2px solid var(--gray-lt);
+  background:#fff;color:var(--gray);font-family:Sarabun,sans-serif;font-size:13px;
+  font-weight:700;cursor:pointer;white-space:nowrap}
+.mj-alt:active{transform:scale(.97)}
+
+/* ── รถเข็นที่ใช้ล่าสุด — ปักไว้บนสุดของหน้าเลือกรถเข็น ────────── */
+.last-wc{background:var(--blue-lt);border:2px solid #bfdbfe;border-radius:13px;
+  padding:11px 13px;margin-bottom:11px;display:flex;align-items:center;gap:11px;cursor:pointer}
+.last-wc:active{transform:scale(.99)}
+.last-wc.off{background:var(--bg);border-color:var(--gray-lt);opacity:.6;cursor:default}
+.last-wc-n{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:600;color:var(--blue-dk)}
+.last-wc-b{flex:1;min-width:0}
+.last-wc-t{font-size:13px;font-weight:800;color:var(--blue-dk)}
+.last-wc-s{font-size:11px;color:var(--gray);margin-top:1px}
+
 /* ── STALE — งานที่เปิดค้างไว้ ─────────────────────────────────── */
 .stale-bar{background:var(--red-lt);border:2px solid #fca5a5;border-radius:13px;
   padding:12px 13px;margin-bottom:12px}
@@ -342,10 +360,10 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 .mj.doing{border-left-color:var(--yellow);background:var(--yellow-lt)}
 .mj.done{border-left-color:var(--green);opacity:.62}
 .mj-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-.mj-flt{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600}
-.mj-meta{font-size:11px;color:var(--gray);margin-top:3px;line-height:1.6}
+.mj-flt{font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:600}
+.mj-meta{font-size:12px;color:var(--gray);margin-top:3px;line-height:1.7}
 .mj-badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
-.mj-bd{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px}
+.mj-bd{font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px}
 .mj-with{font-size:11px;color:var(--purple);font-weight:700;margin-top:4px}
 .mj-btn{margin-top:11px}
 .mj-none{background:#fff;border-radius:14px;padding:26px 18px;text-align:center;
@@ -499,6 +517,21 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
       <button class="bbtn b-cancel" onclick="closeMo()">ยกเลิก</button>
       <button class="bbtn b-stop" onclick="confirmStop()">จบเลย ✓</button>
     </div>
+  </div>
+</div>
+
+<!-- START MODAL — ยืนยันเริ่มงานจากการ์ดงานของ porter -->
+<div class="mo" id="startMo">
+  <div class="ms">
+    <div class="m-handle"></div>
+    <div class="m-title">▶ เริ่มงานนี้?</div>
+    <div class="m-sub" id="startMoSub"></div>
+    <div class="m-info" id="startMoInfo"></div>
+    <div class="m-btns">
+      <button class="bbtn b-cancel" onclick="closeStartMo()">ยกเลิก</button>
+      <button class="bbtn b-start" id="startMoOk" onclick="confirmStart()">เริ่มเลย ▶</button>
+    </div>
+    <button class="obtn" onclick="pickOtherWc()">🦽 เปลี่ยนรถเข็น</button>
   </div>
 </div>
 
@@ -674,15 +707,16 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
     <div><div class="shdr-title">ขั้นตอนที่ 2</div><div class="shdr-sub" id="s2sub">กดคันที่จะใช้งาน</div></div>
   </div>
   <div class="frow">
-    <button class="fc act" onclick="setF('all',this)">ทั้งหมด</button>
+    <button class="fc act" onclick="setF('free',this)">🟢 ว่าง</button>
+    <button class="fc" onclick="setF('all',this)">ทั้งหมด</button>
     <button class="fc" onclick="setF('ใหญ่',this)">ใหญ่</button>
     <button class="fc" onclick="setF('เคบิ้น',this)">เคบิ้น</button>
     <button class="fc" onclick="setF('กลาง',this)">กลาง</button>
     <button class="fc" onclick="setF('พับขา',this)">พับขา</button>
     <button class="fc" onclick="setF('Extra',this)">Extra</button>
-    <button class="fc" onclick="setF('free',this)">🟢 ว่าง</button>
     <button class="fc" onclick="setF('repair',this)">🔧 ซ่อม</button>
   </div>
+  <div id="lastWcBox"></div>
   <input class="sbox-inp" id="wcQ" placeholder="🔍 พิมพ์เลขรถเข็น เช่น 15" inputmode="numeric" oninput="renderWC()">
   <div class="wc-grid" id="wcGrid"></div>
   <div class="hint">💡 กดค้างที่คัน = แจ้งซ่อม / แจ้งซ่อมเสร็จ</div>
@@ -942,7 +976,11 @@ const WC=[
 // STATE
 // ══════════════════════════════════════════════════════════
 let selS=null, selW=null, selFlight=null, selCase=null;
-let trips={}, log=[], cnt=1, stopCtrl=null, wcF='all';
+let trips={}, log=[], cnt=1, stopCtrl=null, wcF='free';
+// รถเข็นคันล่าสุดที่เครื่องนี้ใช้ — porter ส่วนใหญ่ใช้คันเดิมทั้งกะ
+// ปักไว้บนสุดของหน้าเลือก และทำให้กดเริ่มงานได้ในทีเดียว
+let lastW=localStorage.getItem('wcLastW')||'';
+let pendingJob=null;   // เคสที่กำลังจะเริ่ม (มาจากการ์ด "งานของฉัน")
 let queueList=[], queueLoadedAt=0, queueMode=false;
 let wcRepair={}, wcMoCtrl=null, wcLongT=null;   // สถานะซ่อม (ctrl → {note,by,since})
 let staleTrips=[], staleBusy=false;   // งานที่เปิดค้างไว้เกิน 12 ชม. — LP กดปิดได้
@@ -1099,7 +1137,7 @@ function go(s){
   else if(s===2){
     if(!selS){toast('เลือกพนักงานก่อนนะ','terr');go(1);return;}
     document.getElementById('s2sub').textContent=selS.nick+' — กดคันที่จะใช้';
-    document.getElementById('wcQ').value='';renderWC();loadWcStatus();
+    document.getElementById('wcQ').value='';renderLastWc();renderWC();loadWcStatus();
   }
   else if(s===3){
     if(!selW){toast('เลือกรถเข็นก่อนนะ','terr');go(2);return;}
@@ -1211,7 +1249,12 @@ function pickW(ctrl){
   if(wcLongT===null&&document.getElementById('wcMo').classList.contains('show'))return;
   if(wcRepair[ctrl]){openWcMo(ctrl);return;}
   if(trips[ctrl]){openStop(ctrl);return;}
-  selW=WC.find(w=>w.ctrl===ctrl);renderWC();setTimeout(()=>go(3),180);
+  const w=WC.find(w=>w.ctrl===ctrl);
+  if(!w)return;
+  selW=w;renderWC();
+  // รู้เคสอยู่แล้ว (มาจาก "งานของฉัน") → ยืนยันบนแผ่นเลื่อน ไม่ต้องเปิดอีกหน้า
+  if(pendingJob){setTimeout(()=>openStartMo(pendingJob,w),140);return;}
+  setTimeout(()=>go(3),180);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1310,7 +1353,7 @@ async function loadBoard(force){
 function paintBoard(){
   renderStale();renderNowBar();renderLPBoard();renderQueue();renderQueueBanner();renderTeam();
   renderMe();renderAssign();updateStats();
-  if(document.getElementById('pg-s2').classList.contains('active'))renderWC();
+  if(document.getElementById('pg-s2').classList.contains('active')){renderLastWc();renderWC();}
 }
 
 // ── แถบ "ช่วงเวลานี้" บนหน้าหลัก ──
@@ -1777,14 +1820,25 @@ function renderAssign(){
   const rank=c=>caseDone(c)?3:(caseDoing(c)?2:(c.assigned?1:0));
   list.sort((a,b)=>rank(a)-rank(b)||sortKeyTime(a)-sortKeyTime(b)||a.no-b.no);
 
+  const free=assignableStaff();
   el.innerHTML=list.map(c=>{
     const i=todayCases.indexOf(c);
     const done=caseDone(c),doing=caseDoing(c);
+    const next=free[0]||null;
     const cls=done?'done':(doing?'doing':(c.assigned?'set':'open'));
     const time=c.dir==='DEP'?(c.etd?'ETD '+c.etd:''):(c.eta?'ETA '+c.eta:'');
+    // เคสที่ยังไม่มีคน: เสนอคนที่ถือเคสค้างน้อยสุดให้กดทีเดียวจบ
+    // เลือกเองก็ยังได้ที่ปุ่ม "เลือกเอง"
     const btn=done
       ? '<button class="as-btn ghost" disabled>ส่งแล้ว ✓</button>'
-      : `<button class="as-btn${c.assigned?' ghost':''}" onclick="openAssign(${i})">${c.assigned?'เปลี่ยนคน':'จ่ายงาน'}</button>`;
+      : (c.assigned
+        ? `<button class="as-btn ghost" onclick="openAssign(${i})">เปลี่ยนคน</button>`
+        : (next
+          ? `<div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">
+               <button class="as-btn" onclick="quickAssign(${i})">⚡ ${next.nick}</button>
+               <button class="as-btn ghost" onclick="openAssign(${i})">เลือกเอง</button>
+             </div>`
+          : `<button class="as-btn" onclick="openAssign(${i})">จ่ายงาน</button>`));
     return `<div class="as ${cls}">
       <div class="as-top">
         <div style="min-width:0">
@@ -1796,6 +1850,16 @@ function renderAssign(){
       </div>
     </div>`;
   }).join('');
+}
+
+
+// จ่ายเคสให้คนที่ถือเคสค้างน้อยสุดในทีเดียว (ลำดับเดียวกับในหน้าต่างเลือกคน)
+async function quickAssign(i){
+  const c=todayCases[i]; if(!c||asBusy)return;
+  const next=assignableStaff()[0];
+  if(!next){toast('ไม่มีรายชื่อคนขึ้นเวร — ลองรีเฟรช','terr');return;}
+  asCase=c; asNewFlight=null; asPick=[next.sheetName||next.nick];
+  await saveAssign();   // ใช้ทางเดิมทั้งหมด: กติกาฝั่ง server, ข้อความ error, โหลดใหม่
 }
 
 // ── หน้าต่างเลือกคน ──
@@ -1935,6 +1999,101 @@ function pickNewFlight(i){
 }
 
 // ══════════════════════════════════════════════════════════
+// เริ่มงานเร็ว — porter กด 2 ครั้งจบ
+// ══════════════════════════════════════════════════════════
+// เดิมต้องกด 4 ครั้ง (เริ่มงาน → หารถเข็นใน 67 คัน → กด → ยืนยัน)
+// ส่วนใหญ่ใช้รถเข็นคันเดิมทั้งกะ จึงจำคันล่าสุดไว้แล้วเสนอให้เลย
+
+function wcFree(ctrl){ return !!ctrl && !trips[ctrl] && !wcRepair[ctrl] && !!wcByCtrl(ctrl); }
+function wcByCtrl(ctrl){ return WC.find(w=>w.ctrl===ctrl)||null; }
+function wcShortNo(ctrl){ return String(ctrl||'').replace('AOTGA-WH-','WH-'); }
+
+// เหตุผลที่คันล่าสุดใช้ไม่ได้ — บอกให้รู้ ดีกว่าปุ่มหายไปเฉย ๆ
+function lastWcBlockedBy(){
+  if(!lastW||!wcByCtrl(lastW))return '';
+  if(wcRepair[lastW])return '🔧 แจ้งซ่อมอยู่';
+  const t=trips[lastW];
+  if(t)return 'ใช้อยู่โดย '+(t.snick||t.sid);
+  return '';
+}
+
+// กดปุ่มหลักบนการ์ดงาน → ถ้าคันล่าสุดว่างก็ยืนยันได้เลย ไม่ต้องไปหน้าเลือก
+function quickStart(i){
+  const c=todayCases[i]; if(!c)return;
+  const m=me(); if(!m){openGate();return;}
+  if(caseDone(c)){toast('เคสนี้ส่งเรียบร้อยแล้ว ✓','terr');return;}
+  pendingJob=c;
+  if(wcFree(lastW)){ openStartMo(c,wcByCtrl(lastW)); return; }
+  goPickWc(c);
+}
+
+// ไปหน้าเลือกรถเข็น โดยจำไว้ว่ากำลังจะเริ่มเคสไหน
+function goPickWc(c){
+  const m=me(); if(!m){openGate();return;}
+  pendingJob=c||null;
+  selS=m; selW=null;
+  if(c){
+    selCase=c;
+    selFlight={code:c.flight,airline:c.airline,fltno:c.fltno,routing:'',
+               sta:c.eta||'',std:c.etd||'',type:c.dir||''};
+  }
+  queueMode=false;
+  closeStartMo();
+  go(2);
+}
+function pickOtherWc(){ goPickWc(pendingJob); }
+
+// ── แผ่นยืนยันก่อนเริ่ม ──
+function openStartMo(c,w){
+  if(!w)return;
+  selW=w;
+  const m=me()||selS;
+  const time=c?(c.dir==='DEP'?(c.etd?'ETD '+c.etd:'—'):(c.eta?'ETA '+c.eta:'—')):'—';
+  document.getElementById('startMoSub').textContent=
+    c?('#'+c.no+' · '+c.flight+(c.svc?' · '+c.svc:'')):'งานนอกรายการ';
+  document.getElementById('startMoInfo').innerHTML=`
+    <div class="m-row"><span class="ml">🦽 รถเข็น</span>
+      <span class="mv" style="color:var(--blue);font-size:16px">${wcShortNo(w.ctrl)} · ${stype(w.type)}</span></div>
+    ${c?`<div class="m-row"><span class="ml">✈ เที่ยวบิน</span><span class="mv">${c.flight}${c.dir?' · '+c.dir:''}</span></div>
+    <div class="m-row"><span class="ml">⏱ เวลา</span><span class="mv">${time}</span></div>
+    ${c.gate?`<div class="m-row"><span class="ml">🚪 ประตู</span><span class="mv">${c.gate}</span></div>`:''}`:''}
+    <div class="m-row"><span class="ml">👷 ผู้ให้บริการ</span><span class="mv">${m?m.nick:'—'}</span></div>`;
+  document.getElementById('startMo').classList.add('show');
+}
+function closeStartMo(){ document.getElementById('startMo').classList.remove('show'); }
+
+function confirmStart(){
+  const c=pendingJob, m=me()||selS;
+  if(!m||!selW){closeStartMo();return;}
+  selS=m;
+  if(c){
+    selCase=c;
+    selFlight={code:c.flight,airline:c.airline,fltno:c.fltno,routing:'',
+               sta:c.eta||'',std:c.etd||'',type:c.dir||''};
+  }
+  closeStartMo();
+  pendingJob=null;
+  startService();
+}
+
+// ── การ์ด "คันที่ใช้ล่าสุด" บนหน้าเลือกรถเข็น ──
+function renderLastWc(){
+  const el=document.getElementById('lastWcBox');
+  if(!el)return;
+  const w=wcByCtrl(lastW);
+  if(!w){el.innerHTML='';return;}
+  const why=lastWcBlockedBy();
+  el.innerHTML=`<div class="last-wc${why?' off':''}" ${why?'':`onclick="pickW('${w.ctrl}')"`}>
+    <div class="last-wc-n">${w.no.replace('WH-','')}</div>
+    <div class="last-wc-b">
+      <div class="last-wc-t">คันที่คุณใช้ล่าสุด</div>
+      <div class="last-wc-s">${stype(w.type)}${why?' · '+why:' · กดเพื่อใช้คันนี้'}</div>
+    </div>
+    ${why?'':'<div style="font-size:22px">▶</div>'}
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
 // MY JOBS — งานที่ LP จ่ายให้ porter คนนี้
 // ══════════════════════════════════════════════════════════
 // เทียบชื่อแบบเดียวกับฝั่ง server: ตัดช่องว่าง/จุด/ตัวพิมพ์ แล้วยอมให้
@@ -2063,28 +2222,32 @@ function mjCard(c){
         ${c.remark?`<div class="mj-meta">📝 ${c.remark}</div>`:''}
       </div>
     </div>
-    ${(!done&&!cx)?`<button class="bbtn b-start mj-btn" onclick="startMyJob(${i})">▶ ${doing?'รับงานต่อ':'เริ่มงานนี้'}</button>`:''}
+    ${(!done&&!cx)?mjStartBtns(i,doing):''}
+  </div>`;
+}
+
+// คันล่าสุดว่าง → ปุ่มใหญ่ปุ่มเดียวจบ · ไม่ว่าง → พาไปเลือกคัน
+function mjStartBtns(i,doing){
+  const verb=doing?'รับงานต่อ':'เริ่มงาน';
+  if(!wcFree(lastW)){
+    return `<div class="mj-go"><button class="bbtn b-start" onclick="quickStart(${i})">▶ ${verb} · เลือกรถเข็น</button></div>`;
+  }
+  return `<div class="mj-go">
+    <button class="bbtn b-start" onclick="quickStart(${i})">▶ ${verb} · ${wcShortNo(lastW)}</button>
+    <button class="mj-alt" onclick="goPickWc(todayCases[${i}])">🦽 คันอื่น</button>
   </div>`;
 }
 
 // งานด่วนที่ยังไม่มีในชีท — เป็นตัวเราเสมอ เลือกรถเข็นแล้วค่อยเลือกไฟลท์
 function startAdhoc(){
   const m=me(); if(!m){openGate();return;}
+  pendingJob=null;
   selS=m; selCase=null; selFlight=null; queueMode=false;
   go(2);
 }
 
 // porter กดเริ่มงานของตัวเอง → ข้ามหน้าเลือกคน ไปเลือกรถเข็นเลย
-function startMyJob(i){
-  const c=todayCases[i]; if(!c)return;
-  const m=me(); if(!m){openGate();return;}
-  if(caseDone(c)){toast('เคสนี้ส่งเรียบร้อยแล้ว ✓','terr');return;}
-  selS=m; selCase=c;
-  selFlight={code:c.flight,airline:c.airline,fltno:c.fltno,routing:'',
-             sta:c.eta||'',std:c.etd||'',type:c.dir||''};
-  queueMode=false;
-  go(2);
-}
+function startMyJob(i){ quickStart(i); }
 
 // ── บอร์ดเคสที่ LP assign (หน้าหลัก) ──
 function renderLPBoard(){
@@ -2320,6 +2483,8 @@ function startService(){
     status:'active'
   };
   trips[ctrl]=trip;
+  lastW=ctrl; try{localStorage.setItem('wcLastW',ctrl);}catch(e){}
+  pendingJob=null;
   const who=selS.nick;
   sync('start',trip).then(res=>{
     // server ปฏิเสธ (มีคนเริ่มไปแล้วจากอีกเครื่อง) → เอา trip ออกจากหน้าจอนี้
@@ -2582,6 +2747,14 @@ function setSL(s){
 // ══════════════════════════════════════════════════════════
 function flash(){const el=document.getElementById('flash');el.classList.add('show');setTimeout(()=>el.classList.remove('show'),380);}
 function toast(m,c=''){const t=document.getElementById('toast');t.textContent=m;t.className='show '+c;clearTimeout(window._tt);window._tt=setTimeout(()=>t.className='',2800);}
+
+// กลับมาเปิดแอปหลังล็อกหน้าจอ = ข้อมูลบนจอเก่าแล้ว โหลดใหม่ให้เลย
+// ไม่ต้องให้ไปกดปุ่มรีเฟรชเอง และไม่ยิงถี่เกินจำเป็น
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='visible')return;
+  if(Date.now()-boardAt<30000)return;
+  loadBoard(true);
+});
 
 // ── เริ่มทำงาน ──
 updateStats();
