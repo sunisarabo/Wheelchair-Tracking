@@ -1268,21 +1268,38 @@ function jsonErr(msg) {
 // ═══════════════════════════════════════════════════════════════════
 function setupSheets() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  getOrCreateSheet(ss, LOG_SHEET, LOG_HEADERS);
-  getOrCreateSheet(ss, STAT_SHEET, [
-    'วันที่','Trips ทั้งหมด','Trips เสร็จ','เฉลี่ย (น.)','นานสุด (น.)','สั้นสุด (น.)','> 60 น.','อัปเดต'
-  ]);
-  getOrCreateSheet(ss, QUEUE_SHEET, QUEUE_HEADERS);
-  getOrCreateSheet(ss, WC_SHEET, WC_HEADERS);
+  if (!ss) {
+    throw new Error('ไม่พบ Spreadsheet ที่ผูกกับสคริปต์นี้ — '
+      + 'ต้องสร้างสคริปต์จาก Google Sheets (Extensions → Apps Script) ไม่ใช่สคริปต์เดี่ยว');
+  }
+
+  const made = [
+    [LOG_SHEET,   LOG_HEADERS],
+    [STAT_SHEET,  ['วันที่','Trips ทั้งหมด','Trips เสร็จ','เฉลี่ย (น.)','นานสุด (น.)','สั้นสุด (น.)','> 60 น.','อัปเดต']],
+    [QUEUE_SHEET, QUEUE_HEADERS],
+    [WC_SHEET,    WC_HEADERS]
+  ].map(function (x) { getOrCreateSheet(ss, x[0], x[1]); return x[0]; });
+
   ss.rename('WC Tracker Log — HKT Ground Handling');
-  SpreadsheetApp.getUi().alert(
-    '✅ ตั้งค่าเสร็จ!\n\n' +
-    'Sheets ที่สร้าง:\n• TripLog\n• DailySummary\n\n' +
-    'ขั้นตอนต่อไป:\n1. เช็ค FLIGHT_SS_ID / PORTER_SS_ID\n' +
-    '2. Run listPorterTabs() เช็คว่าเจอ tab รายวัน\n' +
-    '3. Deploy > New Deployment > Web App\n' +
-    '4. Copy URL ใส่ใน HTML App'
-  );
+
+  const msg = '✅ ตั้งค่าเสร็จ\n\n'
+    + 'Sheets พร้อมใช้: ' + made.join(' · ') + '\n\n'
+    + 'ขั้นตอนต่อไป:\n'
+    + '1. Run listPorterTabs() — เช็คว่าเจอ tab รายวันของ Porter Summary\n'
+    + '2. Run testPre() — เช็คตารางเวร + ยอดจองล่วงหน้า\n'
+    + '3. Run testCases() / testSummary() — เช็คเคสและสรุปวันนี้';
+
+  Logger.log(msg);
+
+  // getUi() ใช้ได้เฉพาะตอนรันจากเมนู/editor ของไฟล์ Sheets เท่านั้น —
+  // รันจาก trigger, web app หรือ clasp จะ throw ปล่อยผ่านไปใช้ Logger แทน
+  try {
+    SpreadsheetApp.getUi().alert(msg);
+  } catch (e) {
+    Logger.log('(ไม่มี UI ในบริบทนี้ — ดูผลจาก log ด้านบนได้เลย)');
+  }
+
+  return made;
 }
 
 // ═══════════════════════════════════════════════════════════════════
