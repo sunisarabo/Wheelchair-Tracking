@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════
-// WC TRACKER — Google Apps Script Backend  v4.0
+// WC TRACKER — Google Apps Script Backend  v5.0
 // Phuket Airport · Ground Handling
 // ═══════════════════════════════════════════════════════════════════
 //
@@ -22,6 +22,12 @@
 //  7. Deploy > New Deployment > Web App
 //     Execute as: Me | Who has access: Anyone
 //  8. Copy URL ไปใส่ใน HTML App (GAS_URL)
+//
+// ── v5.0: แยกบทบาท LP / Porter ──
+//  LP     : จ่ายเคสให้ porter จากในแอปได้เลย (เขียนชื่อกลับเข้า Porter Summary)
+//           และเปิดเคสใหม่จากตารางบินได้
+//  Porter : เห็นเฉพาะเคสที่ถูกจ่ายให้ตัวเอง แล้วกดเริ่ม/จบงานเอง
+//           งานที่ค้างอยู่เก็บฝั่ง server — เริ่มเครื่องหนึ่งไปกดจบอีกเครื่องได้
 // ═══════════════════════════════════════════════════════════════════
 
 // ── CONFIG ──────────────────────────────────────────────────────────
@@ -55,6 +61,7 @@ const LOG_SHEET   = 'TripLog';
 const STAT_SHEET  = 'DailySummary';
 const QUEUE_SHEET = 'Queue';
 const WC_SHEET    = 'WCStatus';
+const ASSIGN_SHEET = 'AssignLog';   // ประวัติการจ่ายงานของ LP (ใครจ่ายเคสไหนให้ใคร เมื่อไหร่)
 
 const WC_HEADERS = ['รถเข็น','สถานะ','อาการ/หมายเหตุ','แจ้งโดย','แจ้งเมื่อ','อัปเดตล่าสุด'];
 // ↑ สถานะ: 'ซ่อม' = ใช้งานไม่ได้ · 'ใช้งานได้' = ซ่อมเสร็จ/กลับมาใช้ได้
@@ -139,7 +146,14 @@ const LOG_HEADERS = [
   'STA','STD',
   'เวลาเริ่ม','เวลาจบ','ระยะเวลา (นาที)','สถานะ',
   'บันทึกเมื่อ',
-  'Case No','SSR','Porter (ชีท)'
+  'Case No','SSR','Porter (ชีท)',
+  'Case Row','Case Airline','Case Flt'
+];
+
+// ประวัติการจ่ายงาน (LP กดจ่ายเคสผ่านแอป)
+const ASSIGN_HEADERS = [
+  'บันทึกเมื่อ','วันที่','แถวในชีท','เคส','เที่ยวบิน','SSR',
+  'จ่ายให้','คนเดิม','จ่ายโดย','หมายเหตุ'
 ];
 
 // ═══════════════════════════════════════════════════════════════════
@@ -204,9 +218,23 @@ function doGet(e) {
     catch (err) { return jsonErr('queue error: ' + err.message); }
   }
 
+  // API: งานที่ยังไม่จบ (ใช้กู้สถานะเมื่อรีเฟรช / เปลี่ยนเครื่อง)
+  if (action === 'active') {
+    try { return jsonOk({ active: getActiveTrips() }); }
+    catch (err) { return jsonErr('active error: ' + err.message); }
+  }
+
+  // API: งานของ porter คนเดียว — ?action=myjobs&sid=...&name=...
+  if (action === 'myjobs') {
+    try {
+      const p = (e && e.parameter) || {};
+      return jsonOk(getMyJobs(p.sid || '', p.name || ''));
+    } catch (err) { return jsonErr('myjobs error: ' + err.message); }
+  }
+
   // API: health check
   if (action === 'health') {
-    return jsonOk({ app: 'WC Tracker HKT', version: '4.0', time: new Date().toISOString() });
+    return jsonOk({ app: 'WC Tracker HKT', version: '5.0', time: new Date().toISOString() });
   }
 
   // Default: serve the web-app UI
@@ -227,6 +255,8 @@ function doPost(e) {
 
     if      (action === 'start')     return jsonOk(handleStart(trip));
     else if (action === 'end')       return jsonOk(handleEnd(trip));
+    else if (action === 'assign')    return jsonOk(assignCase(data.assign || {}));
+    else if (action === 'case_new')  return jsonOk(createCase(data.case || {}));
     else if (action === 'queue_set') return jsonOk({ queue: setQueue(data.queue || []) });
     else if (action === 'wc_set')     return jsonOk({ repair: setWCStatus(data.wc || {}) });
     else                              return jsonErr('Unknown action: ' + action);
@@ -866,6 +896,7 @@ function getBoard() {
     out.roster = []; out.errors.push('pre: ' + e.message);
   }
 
+  try { out.active = getActiveTrips(); } catch (e) { out.active = []; out.errors.push('active: ' + e.message); }
   try { out.queue  = getQueue(); }    catch (e) { out.queue = [];  out.errors.push('queue: ' + e.message); }
   try { out.repair = getWCRepair(); } catch (e) { out.repair = []; out.errors.push('repair: ' + e.message); }
 
@@ -1058,11 +1089,362 @@ function queueOnEnd(sid) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// ACTIVE TRIPS — งานที่ยังไม่จบ (อ่านจาก TripLog)
+// ═══════════════════════════════════════════════════════════════════
+// เก็บฝั่ง server เพื่อให้ porter เริ่มงานบนเครื่องหนึ่งแล้วไปกดจบบนอีกเครื่องได้
+// และรีเฟรชหน้าจอแล้วงานที่ค้างอยู่ไม่หาย
+const TCOL = {
+  ID: 0, DATE: 1, CTRL: 2, TYPE: 3,
+  SID: 4, SNICK: 5, SNAME: 6,
+  FLIGHT: 7, AIRLINE: 8, ROUTING: 9, STA: 10, STD: 11,
+  START: 12, END: 13, DUR: 14, STATUS: 15, SAVED: 16,
+  CASE_NO: 17, CASE_SVC: 18, CASE_PORTER: 19,
+  CASE_ROW: 20, CASE_AIRLINE: 21, CASE_FLTNO: 22,
+};
+
+function getActiveTrips() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) return [];
+  const log = ss.getSheetByName(LOG_SHEET);
+  if (!log || log.getLastRow() < 2) return [];
+
+  const data = log.getDataRange().getValues();
+  const out  = [];
+
+  for (let r = 1; r < data.length; r++) {
+    const row = data[r];
+    if (!row[TCOL.ID]) continue;
+    if (row[TCOL.END]) continue;                                   // จบไปแล้ว
+    if (String(row[TCOL.STATUS] || '').indexOf('กำลัง') < 0) continue;
+
+    out.push({
+      id:          String(row[TCOL.ID]),
+      date:        fmtDateCell(row[TCOL.DATE]),
+      ctrl:        String(row[TCOL.CTRL]  || ''),
+      type:        String(row[TCOL.TYPE]  || ''),
+      sid:         String(row[TCOL.SID]   || ''),
+      snick:       String(row[TCOL.SNICK] || ''),
+      sname:       String(row[TCOL.SNAME] || ''),
+      flight:      String(row[TCOL.FLIGHT]  || ''),
+      flAirline:   String(row[TCOL.AIRLINE] || ''),
+      flRouting:   String(row[TCOL.ROUTING] || ''),
+      flSTA:       String(row[TCOL.STA] || ''),
+      flSTD:       String(row[TCOL.STD] || ''),
+      startTime:   fmtClockCell(row[TCOL.START]),
+      caseNo:      row[TCOL.CASE_NO]     || '',
+      caseSvc:     String(row[TCOL.CASE_SVC]    || ''),
+      casePorter:  String(row[TCOL.CASE_PORTER] || ''),
+      caseRow:     row[TCOL.CASE_ROW]     || '',
+      caseAirline: String(row[TCOL.CASE_AIRLINE] || ''),
+      caseFltno:   String(row[TCOL.CASE_FLTNO]   || ''),
+      logRow:      r + 1,
+    });
+  }
+  return out;
+}
+
+// เซลล์วันที่ใน TripLog เขียนเป็นข้อความ dd/MM/yyyy แต่ชีทอาจแปลงเป็น Date เอง
+function fmtDateCell(v) {
+  if (v instanceof Date && !isNaN(v)) {
+    return Utilities.formatDate(v, 'Asia/Bangkok', 'dd/MM/yyyy');
+  }
+  return String(v || '').trim();
+}
+
+// เวลาเริ่ม/จบ เขียนเป็น HH:mm:ss แต่ชีทอาจแปลงเป็น Date เช่นกัน
+function fmtClockCell(v) {
+  if (v instanceof Date && !isNaN(v)) {
+    return Utilities.formatDate(v, 'Asia/Bangkok', 'HH:mm:ss');
+  }
+  return String(v || '').trim();
+}
+
+// งานของ porter คนหนึ่ง: เคสที่ LP จ่ายให้ + งานที่กำลังทำอยู่
+// name = ชื่ออังกฤษอย่างที่สะกดในชีท (แอปส่งมาจากตาราง ROMAN)
+function getMyJobs(sid, name) {
+  const res  = getTodayCases();
+  const want = normPorterName(name);
+
+  const mine = (res.cases || []).filter(function (c) {
+    if (!want) return false;
+    return (c.porters || []).some(function (p) { return porterMatches(p, want); });
+  });
+
+  const active = getActiveTrips().filter(function (t) {
+    return !sid || String(t.sid) === String(sid);
+  });
+
+  return { name: name || '', sid: sid || '', tab: res.tab, jobs: mine, active: active };
+}
+
+function normPorterName(x) {
+  return String(x || '').toLowerCase().replace(/[^a-z0-9฀-๿]/g, '');
+}
+
+// ชีทสะกดชื่อไม่นิ่ง ("Ameen" / "A Meen" / "Wuttichai K.") — เทียบแบบตัดอักขระพิเศษ
+// แล้วยอมให้เป็นคำขึ้นต้นของกันและกันได้ เหมือนที่ฝั่งแอปทำ
+function porterMatches(sheetName, wantNorm) {
+  const n = normPorterName(sheetName);
+  if (!n || !wantNorm) return false;
+  return n === wantNorm || n.indexOf(wantNorm) === 0 || wantNorm.indexOf(n) === 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PORTER SUMMARY — write-back: หาแถวเคส / อัปเดตเวลา / จ่ายงาน
+// ═══════════════════════════════════════════════════════════════════
+
+// เปิด tab รายวันของ Porter Summary (ใช้ร่วมกันทุกฟังก์ชันที่เขียนกลับ)
+function openPorterDayTab() {
+  const today = new Date();
+  const ss    = getPorterSpreadsheet(today);
+  const sheet = findPorterDayTab(ss, today);
+  if (!sheet) {
+    throw new Error('ไม่พบ tab ของวันนี้ใน Porter Summary — '
+      + 'รัน listPorterTabs() แล้วตั้ง PORTER_TAB_OVERRIDE ถ้าจำเป็น');
+  }
+  return sheet;
+}
+
+// ── หาแถวของเคสในชีท ──
+// แอปส่ง caseRow ที่อ่านไว้ตอนโหลดมาด้วย แต่ OCC อาจแทรก/ลบแถวระหว่างนั้น
+// จึงตรวจว่าแถวเดิมยังเป็นเคสเดียวกันไหม ถ้าไม่ใช่ค่อยไล่หาใหม่จาก IATA + เที่ยวบิน
+// คืน -1 ถ้าหาไม่เจอ
+function locateCaseRow(sheet, ref) {
+  const wantAir = String((ref && ref.caseAirline) || '').trim().toUpperCase();
+  const wantFlt = String((ref && ref.caseFltno)   || '').trim().toUpperCase();
+  if (!wantAir || !wantFlt) return -1;
+
+  const maxRow = sheet.getLastRow();
+  const wantNo = parseInt((ref && ref.caseNo), 10);
+  const row    = parseInt((ref && ref.caseRow), 10);
+
+  const sameCase = function (vals) {
+    return String(vals[PCOL.AIRLINE] || '').trim().toUpperCase() === wantAir
+        && String(vals[PCOL.FLTNO]   || '').trim().toUpperCase() === wantFlt;
+  };
+
+  if (row >= 1 && row <= maxRow) {
+    const vals = sheet.getRange(row, 1, 1, PCOL.SVC + 1).getValues()[0];
+    if (sameCase(vals)) return row;
+  }
+
+  // แถวเดิมไม่ใช่เคสนี้แล้ว → ไล่หาใหม่ทั้งชีท
+  const data = sheet.getDataRange().getValues();
+  let fallback = -1;
+  for (let r = 0; r < data.length; r++) {
+    if (!sameCase(data[r])) continue;
+    // เที่ยวบินเดียวกันมีได้หลายเคส — ใช้เลข "ที่" ช่วยแยกถ้ามี
+    const no = parseInt(data[r][PCOL.NO], 10);
+    if (wantNo && no === wantNo) return r + 1;
+    if (fallback < 0) fallback = r + 1;
+  }
+  return fallback;
+}
+
+// ── เขียนเวลา "รับเคส" / "ส่งเคส" กลับเข้า Porter Summary ──
+// เขียนทับของเดิมไม่ได้ (กันแอปไปลบสิ่งที่ LP กรอกเอง) และพังแล้วต้องไม่ทำให้ trip ล้ม
+function markCase(trip, phase, timeStr) {
+  if (!PORTER_WRITEBACK) return;
+  if (!trip || !trip.caseRow) return;
+
+  try {
+    const sheet = openPorterDayTab();
+    const row   = locateCaseRow(sheet, trip);
+    if (row < 0) {
+      Logger.log('markCase: ไม่พบแถวเคส ' + trip.caseAirline + trip.caseFltno);
+      return;
+    }
+
+    const t = timeStr || Utilities.formatDate(new Date(), 'Asia/Bangkok', 'HH:mm');
+
+    if (phase === 'pickup') {
+      if (!sheet.getRange(row, PCOL.PICKUP_TIME + 1).getValue()) {
+        sheet.getRange(row, PCOL.PICKUP_MARK + 1).setValue(true);
+        sheet.getRange(row, PCOL.PICKUP_TIME + 1).setValue(t);
+        Logger.log('markCase pickup: แถว ' + row + ' = ' + t);
+      }
+      setCaseStatus(sheet, row, 'ON PROCESS');
+
+    } else if (phase === 'deliver') {
+      if (!sheet.getRange(row, PCOL.DELIVER_TIME + 1).getValue()) {
+        sheet.getRange(row, PCOL.DELIVER_TIME + 1).setValue(t);
+        Logger.log('markCase deliver: แถว ' + row + ' = ' + t);
+      }
+      setCaseStatus(sheet, row, 'COMPLETED');
+    }
+  } catch (e) {
+    // write-back พังต้องไม่ทำให้การบันทึก trip ล้ม
+    Logger.log('markCase error (' + phase + '): ' + e.message);
+  }
+}
+
+// ── ช่องสถานะ: ไม่ถอยหลัง (COMPLETED แล้วไม่กลับไป ON PROCESS) และไม่แตะเคสที่ถูกยกเลิก ──
+function setCaseStatus(sheet, row, status) {
+  const cell = sheet.getRange(row, PCOL.STATUS + 1);
+  const cur  = String(cell.getValue() || '').trim().toUpperCase();
+  if (cur.indexOf('CANCEL') >= 0) return;
+  if (cur.indexOf('COMPLET') >= 0 && status !== 'COMPLETED') return;
+  if (cur === status) return;
+  cell.setValue(status);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ASSIGN — LP จ่ายเคสให้ porter จากในแอป
+// ═══════════════════════════════════════════════════════════════════
+// a = { caseRow, caseNo, caseAirline, caseFltno, porters:[ชื่อในชีท], by, note }
+// porters ว่าง = ถอนงานคืน (ล้างช่องชื่อพนักงาน)
+function assignCase(a) {
+  if (!a) throw new Error('ไม่มีข้อมูลการจ่ายงาน');
+
+  const sheet = openPorterDayTab();
+  const row   = locateCaseRow(sheet, a);
+  if (row < 0) {
+    throw new Error('ไม่พบเคส ' + (a.caseAirline || '') + (a.caseFltno || '')
+      + ' ในชีทวันนี้ — อาจถูกลบหรือย้ายแถว ลองรีเฟรชแล้วจ่ายใหม่');
+  }
+
+  const cur = sheet.getRange(row, 1, 1, PCOL.SVC + 1).getValues()[0];
+
+  // เคสที่ส่งผู้โดยสารแล้วไม่ควรเปลี่ยนคน — ชื่อในชีทคือคนที่ทำจริง
+  if (cur[PCOL.DELIVER_TIME]) {
+    throw new Error('เคส #' + (cur[PCOL.NO] || a.caseNo) + ' ส่งเรียบร้อยแล้ว — เปลี่ยนคนไม่ได้');
+  }
+
+  const before = String(cur[PCOL.PORTER] || '').trim();
+  const names  = (a.porters || [])
+    .map(function (x) { return String(x || '').trim(); })
+    .filter(function (x) { return x.length > 0; });
+  const after = names.join(', ');
+
+  // เคสที่รับผู้โดยสารไปแล้ว เพิ่มคนช่วยได้ แต่ถอดคนที่กำลังทำอยู่ออกไม่ได้
+  if (cur[PCOL.PICKUP_TIME] && before) {
+    const keep = splitPorters(before).filter(function (n) {
+      return names.map(function (x) { return x.toUpperCase(); }).indexOf(n.toUpperCase()) < 0;
+    });
+    if (keep.length) {
+      throw new Error('เคส #' + (cur[PCOL.NO] || a.caseNo) + ' กำลังให้บริการอยู่โดย '
+        + keep.join(', ') + ' — เอาชื่อออกไม่ได้ (เพิ่มคนช่วยได้)');
+    }
+  }
+
+  sheet.getRange(row, PCOL.PORTER + 1).setValue(after);
+
+  // ยังไม่เริ่มงาน: มีคนแล้ว = STANDBY, ถอนคนออก = ล้างสถานะ
+  if (!cur[PCOL.PICKUP_TIME]) {
+    const st = String(cur[PCOL.STATUS] || '').trim().toUpperCase();
+    if (after && !st) sheet.getRange(row, PCOL.STATUS + 1).setValue('STANDBY');
+    if (!after && st === 'STANDBY') sheet.getRange(row, PCOL.STATUS + 1).setValue('');
+  }
+
+  logAssign({
+    row:     row,
+    caseNo:  cur[PCOL.NO] || a.caseNo || '',
+    flight:  String(cur[PCOL.AIRLINE] || '') + String(cur[PCOL.FLTNO] || ''),
+    svc:     String(cur[PCOL.SVC] || ''),
+    after:   after || '(ถอนงาน)',
+    before:  before,
+    by:      a.by || '',
+    note:    a.note || ''
+  });
+
+  Logger.log('assignCase: แถว ' + row + ' #' + (cur[PCOL.NO] || '') + ' → "' + after + '" โดย ' + (a.by || '-'));
+  return { row: row, caseNo: cur[PCOL.NO] || a.caseNo || '', porter: after, before: before };
+}
+
+// ── LP เปิดเคสใหม่จากไฟลท์ที่ยังไม่มีในชีท ──
+// c = { airline, fltno, eta, etd, gate, svc, dir, porters, by, remark }
+// ใช้แถวว่างที่มีเลข "ที่" อยู่แล้วเท่านั้น — ไม่แทรกแถวเอง เพราะจะทำให้
+// บล็อก STAFF RECORD ทางขวาและสูตรในชีทเลื่อนตาม
+function createCase(c) {
+  if (!c) throw new Error('ไม่มีข้อมูลเคส');
+  const airline = String(c.airline || '').trim().toUpperCase();
+  const fltno   = String(c.fltno   || '').trim();
+  if (!airline || !fltno) throw new Error('ต้องระบุสายการบินและเที่ยวบิน');
+
+  const sheet = openPorterDayTab();
+  const data  = sheet.getDataRange().getValues();
+
+  let target = -1;
+  for (let r = 0; r < data.length; r++) {
+    const no = parseInt(data[r][PCOL.NO], 10);
+    if (!no || isNaN(no)) continue;
+    const air = String(data[r][PCOL.AIRLINE] || '').trim();
+    const flt = String(data[r][PCOL.FLTNO]   || '').trim();
+    if (!air && !flt) { target = r + 1; break; }     // แถวที่มีเลขแต่ยังไม่มีไฟลท์
+  }
+  if (target < 0) {
+    throw new Error('ชีทวันนี้ไม่มีแถวว่างเหลือ — เพิ่มแถวในชีทก่อนแล้วค่อยกดใหม่');
+  }
+
+  const names = (c.porters || [])
+    .map(function (x) { return String(x || '').trim(); })
+    .filter(function (x) { return x.length > 0; })
+    .join(', ');
+
+  sheet.getRange(target, PCOL.AIRLINE + 1).setValue(airline);
+  sheet.getRange(target, PCOL.FLTNO   + 1).setValue(fltno);
+  if (names)    sheet.getRange(target, PCOL.PORTER + 1).setValue(names);
+  if (c.eta)    sheet.getRange(target, PCOL.ETA    + 1).setValue(c.eta);
+  if (c.etd)    sheet.getRange(target, PCOL.ETD    + 1).setValue(c.etd);
+  if (c.gate)   sheet.getRange(target, PCOL.GATE   + 1).setValue(c.gate);
+  if (c.svc)    sheet.getRange(target, PCOL.SVC    + 1).setValue(String(c.svc).toUpperCase());
+  if (c.remark) sheet.getRange(target, PCOL.REMARK + 1).setValue(c.remark);
+  if (c.dir === 'ARR') sheet.getRange(target, PCOL.ARR_CHK + 1).setValue(true);
+  if (c.dir === 'DEP') sheet.getRange(target, PCOL.DEP_CHK + 1).setValue(true);
+  if (names) sheet.getRange(target, PCOL.STATUS + 1).setValue('STANDBY');
+
+  const caseNo = sheet.getRange(target, PCOL.NO + 1).getValue();
+
+  logAssign({
+    row: target, caseNo: caseNo, flight: airline + fltno, svc: c.svc || '',
+    after: names || '(ยังไม่จ่าย)', before: '', by: c.by || '', note: 'เปิดเคสใหม่จากแอป'
+  });
+
+  Logger.log('createCase: แถว ' + target + ' #' + caseNo + ' ' + airline + fltno);
+  return { row: target, caseNo: caseNo, flight: airline + fltno, porter: names };
+}
+
+// ── ประวัติการจ่ายงาน (เก็บในไฟล์ log ของแอป ไม่ยุ่งกับ Porter Summary) ──
+function logAssign(rec) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) return;
+    const sh  = getOrCreateSheet(ss, ASSIGN_SHEET, ASSIGN_HEADERS);
+    const now = new Date();
+    sh.appendRow([
+      Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm:ss'),
+      Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy'),
+      rec.row || '', rec.caseNo || '', rec.flight || '', rec.svc || '',
+      rec.after || '', rec.before || '', rec.by || '', rec.note || ''
+    ]);
+  } catch (e) {
+    Logger.log('logAssign error: ' + e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // handleStart
 // ═══════════════════════════════════════════════════════════════════
 function handleStart(trip) {
   if (!trip || !trip.id) throw new Error('No trip data');
   if (isWCUnderRepair(trip.ctrl)) throw new Error('รถเข็น ' + trip.ctrl + ' แจ้งซ่อมอยู่ — เลือกคันอื่น');
+
+  // กันเริ่มซ้ำจากคนละเครื่อง
+  const open = getActiveTrips();
+  const dupWC = open.filter(function (t) { return t.ctrl && t.ctrl === trip.ctrl; })[0];
+  if (dupWC) {
+    throw new Error('รถเข็น ' + trip.ctrl + ' กำลังถูกใช้โดย ' + (dupWC.snick || dupWC.sid)
+      + ' (เริ่ม ' + dupWC.startTime + ') — เลือกคันอื่น');
+  }
+  if (trip.caseNo) {
+    const dupCase = open.filter(function (t) {
+      return String(t.caseNo) === String(trip.caseNo) && String(t.sid) === String(trip.sid);
+    })[0];
+    if (dupCase) {
+      throw new Error('เคส #' + trip.caseNo + ' เริ่มไปแล้วเมื่อ ' + dupCase.startTime
+        + ' — ไปกดจบงานที่หน้า "งานของฉัน"');
+    }
+  }
 
   const ss  = SpreadsheetApp.getActiveSpreadsheet();
   const log = getOrCreateSheet(ss, LOG_SHEET, LOG_HEADERS);
@@ -1090,7 +1472,10 @@ function handleStart(trip) {
     Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm:ss'),
     trip.caseNo     || '',
     trip.caseSvc    || '',
-    trip.casePorter || ''
+    trip.casePorter || '',
+    trip.caseRow     || '',
+    trip.caseAirline || '',
+    trip.caseFltno   || ''
   ]);
 
   // write-back "รับเคส" → Porter Summary
@@ -1150,7 +1535,8 @@ function handleEnd(trip) {
       trip.startTime||'', endTime, dur,
       'เสร็จสิ้น',
       Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm:ss'),
-      trip.caseNo||'', trip.caseSvc||'', trip.casePorter||''
+      trip.caseNo||'', trip.caseSvc||'', trip.casePorter||'',
+      trip.caseRow||'', trip.caseAirline||'', trip.caseFltno||''
     ]);
   }
 
@@ -1403,4 +1789,44 @@ function testPost() {
   trip.endTime='09:00:00'; trip.duration='30.0'; trip.status='done';
   Logger.log('=== TEST END ===');
   Logger.log(JSON.stringify(handleEnd(trip)));
+}
+
+// ── v5.0: งานที่ยังค้างอยู่ + งานของ porter คนหนึ่ง ──
+function testActive() {
+  const a = getActiveTrips();
+  Logger.log('งานที่ยังไม่จบ: ' + a.length);
+  a.forEach(function (t) {
+    Logger.log('  ' + t.id + ' | ' + t.snick + ' | ' + t.ctrl
+      + ' | เริ่ม ' + t.startTime
+      + (t.caseNo ? ' | เคส #' + t.caseNo : '') + ' | ✈ ' + t.flight);
+  });
+  return a;
+}
+
+// แก้ชื่อตรงนี้เป็นชื่ออังกฤษอย่างที่สะกดในชีท แล้วกด Run เพื่อเช็คการจับคู่
+function testMyJobs() {
+  const name = 'Chatchai';
+  const r = getMyJobs('', name);
+  Logger.log('เคสของ "' + name + '" ใน tab ' + r.tab + ': ' + r.jobs.length + ' เคส');
+  r.jobs.forEach(function (c) {
+    Logger.log('  #' + c.no + ' ' + c.flight + ' ' + c.svc + ' · ' + c.state + ' · ' + c.porter);
+  });
+  Logger.log('งานที่กำลังทำอยู่ทั้งระบบ: ' + r.active.length);
+  return r;
+}
+
+// เช็คว่าแถวว่างในชีทวันนี้ยังพอให้ LP เปิดเคสใหม่ได้ไหม
+function testFreeCaseRows() {
+  const sheet = openPorterDayTab();
+  const data  = sheet.getDataRange().getValues();
+  let used = 0, free = 0;
+  for (let r = 0; r < data.length; r++) {
+    const no = parseInt(data[r][PCOL.NO], 10);
+    if (!no || isNaN(no)) continue;
+    const air = String(data[r][PCOL.AIRLINE] || '').trim();
+    const flt = String(data[r][PCOL.FLTNO]   || '').trim();
+    if (!air && !flt) free++; else used++;
+  }
+  Logger.log('tab ' + sheet.getName() + ': ใช้ไปแล้ว ' + used + ' แถว · ว่าง ' + free + ' แถว');
+  return { tab: sheet.getName(), used: used, free: free };
 }

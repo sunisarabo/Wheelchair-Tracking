@@ -297,6 +297,86 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 .bar-in{height:100%;background:var(--blue);border-radius:8px}
 .bar-n{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;min-width:26px;text-align:right}
 
+/* ── ROLE GATE — เลือกบทบาทตอนเปิดแอปครั้งแรก ─────────────────── */
+.gate{display:none;position:fixed;inset:0;z-index:500;background:var(--bg);
+  overflow-y:auto;padding:26px 16px 40px}
+.gate.show{display:block}
+.gate-h{text-align:center;margin-bottom:22px}
+.gate-logo{font-size:44px}
+.gate-t{font-size:20px;font-weight:800;margin-top:6px}
+.gate-s{font-size:13px;color:var(--gray);margin-top:3px}
+.role-card{background:#fff;border:2px solid var(--gray-lt);border-radius:16px;
+  padding:18px 16px;margin-bottom:11px;display:flex;align-items:center;gap:14px;
+  cursor:pointer;box-shadow:var(--sh);transition:transform .1s}
+.role-card:active{transform:scale(.98)}
+.role-ico{font-size:34px;width:52px;text-align:center;flex-shrink:0}
+.role-t{font-size:17px;font-weight:800}
+.role-d{font-size:12px;color:var(--gray);margin-top:2px;line-height:1.5}
+
+/* ── ROLE BAR — แถบบอกว่ากำลังใช้งานในฐานะใคร ─────────────────── */
+.role-bar{display:flex;align-items:center;gap:8px;background:#fff;border-radius:12px;
+  padding:9px 12px;margin-bottom:12px;box-shadow:var(--sh)}
+.role-pill{font-size:10px;font-weight:800;padding:3px 9px;border-radius:10px;white-space:nowrap}
+.rp-lp{background:var(--purple-lt);color:var(--purple)}
+.rp-po{background:var(--blue-lt);color:var(--blue)}
+.role-who{flex:1;min-width:0;font-size:13px;font-weight:700;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.role-sw{border:none;background:var(--gray-lt);color:var(--gray);border-radius:8px;
+  padding:5px 10px;font-family:Sarabun,sans-serif;font-size:11px;font-weight:700;cursor:pointer}
+
+/* ── MY JOBS — การ์ดงานของ porter ─────────────────────────────── */
+.mj{background:#fff;border-radius:14px;padding:13px;margin-bottom:9px;
+  box-shadow:var(--sh);border-left:4px solid var(--blue)}
+.mj.doing{border-left-color:var(--yellow);background:var(--yellow-lt)}
+.mj.done{border-left-color:var(--green);opacity:.62}
+.mj-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.mj-flt{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600}
+.mj-meta{font-size:11px;color:var(--gray);margin-top:3px;line-height:1.6}
+.mj-badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.mj-bd{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px}
+.mj-with{font-size:11px;color:var(--purple);font-weight:700;margin-top:4px}
+.mj-btn{margin-top:11px}
+.mj-none{background:#fff;border-radius:14px;padding:26px 18px;text-align:center;
+  color:var(--text3);box-shadow:var(--sh);font-size:13px}
+
+/* ── ASSIGN — หน้าจ่ายงานของ LP ────────────────────────────────── */
+.as{background:#fff;border-radius:13px;padding:11px 13px;margin-bottom:8px;
+  box-shadow:var(--sh);border-left:4px solid var(--gray-lt)}
+.as.open{border-left-color:var(--red)}
+.as.set{border-left-color:var(--blue)}
+.as.doing{border-left-color:var(--yellow);background:var(--yellow-lt)}
+.as.done{border-left-color:var(--green);opacity:.6}
+.as-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.as-flt{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600}
+.as-meta{font-size:10px;color:var(--gray);margin-top:2px}
+.as-who{font-size:13px;font-weight:700;margin-top:5px}
+.as-who.none{color:var(--red)}
+.as-btn{border:none;background:var(--blue);color:#fff;border-radius:9px;
+  padding:7px 13px;font-family:Sarabun,sans-serif;font-size:12px;font-weight:700;
+  cursor:pointer;white-space:nowrap}
+.as-btn.ghost{background:var(--gray-lt);color:var(--gray)}
+.as-btn:disabled{opacity:.4;cursor:default}
+
+/* ── PORTER PICKER — เลือกคนในหน้าต่างจ่ายงาน ─────────────────── */
+.pp-list{max-height:46vh;overflow-y:auto;margin-bottom:14px;
+  display:flex;flex-direction:column;gap:6px}
+.pp{background:var(--bg);border:2px solid transparent;border-radius:11px;
+  padding:9px 11px;display:flex;align-items:center;gap:9px;cursor:pointer}
+.pp:active{transform:scale(.99)}
+.pp.sel{border-color:var(--blue);background:var(--blue-lt)}
+.pp.busy{opacity:.72}
+.pp-tick{width:22px;height:22px;border-radius:7px;border:2px solid var(--border);
+  background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  font-size:13px;color:#fff;font-weight:800}
+.pp.sel .pp-tick{background:var(--blue);border-color:var(--blue)}
+.pp-body{flex:1;min-width:0}
+.pp-nm{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pp-sub{font-size:10px;color:var(--gray);margin-top:1px}
+.pp-load{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;
+  color:var(--blue);min-width:30px;text-align:right}
+.pp-load.hi{color:var(--red)}
+.pp-warn{font-size:11px;color:var(--red);font-weight:700;margin-bottom:9px;text-align:center}
+
 /* EMPTY */
 .empty{background:#fff;border-radius:14px;padding:34px 20px;text-align:center;
   color:var(--text3);box-shadow:var(--sh)}
@@ -347,6 +427,55 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 <div class="flash" id="flash"></div>
 <div id="toast"></div>
 
+<!-- ROLE GATE — เลือกบทบาท / เลือกว่าตัวเองเป็นใคร -->
+<div class="gate" id="gate">
+  <div class="gate-h">
+    <div class="gate-logo">🦽</div>
+    <div class="gate-t">WC Service HKT</div>
+    <div class="gate-s" id="gateSub">เข้าใช้งานในฐานะ...</div>
+  </div>
+
+  <div id="gateRole">
+    <div class="role-card" onclick="pickRole('lp')">
+      <div class="role-ico">👔</div>
+      <div>
+        <div class="role-t">LP / หัวหน้างาน</div>
+        <div class="role-d">จ่ายเคสให้ porter · เปิดเคสใหม่จากตารางบิน · ดูภาพรวมทั้งกะ</div>
+      </div>
+    </div>
+    <div class="role-card" onclick="pickRole('porter')">
+      <div class="role-ico">👷</div>
+      <div>
+        <div class="role-t">Porter / พนักงาน</div>
+        <div class="role-d">ดูเฉพาะงานที่ LP จ่ายให้ตัวเอง แล้วกดเริ่ม–จบงานเอง</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="gateMe" style="display:none">
+    <input class="sbox-inp" id="gateQ" placeholder="🔍 ค้นหาชื่อหรือรหัสพนักงาน..." oninput="renderGateStaff(this.value)">
+    <div class="staff-grid" id="gateGrid" style="max-height:52vh"></div>
+    <button class="obtn" onclick="backToRole()">← เลือกบทบาทใหม่</button>
+  </div>
+</div>
+
+<!-- ASSIGN MODAL — LP เลือกคนให้เคส -->
+<div class="mo" id="asMo">
+  <div class="ms">
+    <div class="m-handle"></div>
+    <div class="m-title" id="asMoTitle">🎯 จ่ายงาน</div>
+    <div class="m-sub" id="asMoSub"></div>
+    <div class="m-info" id="asMoInfo"></div>
+    <div class="pp-warn" id="asMoWarn" style="display:none"></div>
+    <input class="sbox-inp" id="asMoQ" placeholder="🔍 ค้นหาพนักงาน..." oninput="renderPorterPicker(this.value)">
+    <div class="pp-list" id="asMoList"></div>
+    <div class="m-btns">
+      <button class="bbtn b-cancel" onclick="closeAsMo()">ยกเลิก</button>
+      <button class="bbtn b-new" id="asMoOk" onclick="saveAssign()">บันทึก ✓</button>
+    </div>
+  </div>
+</div>
+
 <!-- STOP MODAL -->
 <div class="mo" id="stopMo">
   <div class="ms">
@@ -390,6 +519,11 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 
 <!-- HOME -->
 <div class="page active" id="pg-home">
+  <div class="role-bar" id="homeRoleBar" style="display:none">
+    <span class="role-pill" id="homeRolePill">LP</span>
+    <span class="role-who" id="homeWho">—</span>
+    <button class="role-sw" onclick="openGate()">เปลี่ยน</button>
+  </div>
   <div class="stats">
     <div class="sbox"><div class="snum cg" id="sF">67</div><div class="stxt">ว่าง</div></div>
     <div class="sbox"><div class="snum cy" id="sU">0</div><div class="stxt">ใช้งาน</div></div>
@@ -425,6 +559,54 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
   <div style="margin-top:13px">
     <button class="bbtn b-new" onclick="go(1)">➕ เริ่มให้บริการใหม่ (เลือกเอง)</button>
   </div>
+</div>
+
+<!-- MY JOBS — หน้าหลักของ porter -->
+<div class="page" id="pg-me">
+  <div class="role-bar">
+    <span class="role-pill rp-po">PORTER</span>
+    <span class="role-who" id="meWho">—</span>
+    <button class="role-sw" onclick="openGate()">เปลี่ยน</button>
+  </div>
+
+  <div class="stats">
+    <div class="sbox"><div class="snum cy" id="meDoing">0</div><div class="stxt">กำลังทำ</div></div>
+    <div class="sbox"><div class="snum cb" id="meWait">0</div><div class="stxt">รอเริ่ม</div></div>
+    <div class="sbox"><div class="snum cg" id="meDone">0</div><div class="stxt">เสร็จแล้ว</div></div>
+    <div class="sbox"><div class="snum" id="meShift" style="font-size:14px;padding-top:5px">—</div><div class="stxt">กะวันนี้</div></div>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div class="sec" style="margin:0">🎫 งานของฉันวันนี้</div>
+    <button onclick="loadBoard(true)" style="background:var(--blue-lt);color:var(--blue);border:none;
+      border-radius:8px;padding:5px 11px;font-family:Sarabun,sans-serif;font-size:11px;
+      font-weight:700;cursor:pointer">↻ รีเฟรช</button>
+  </div>
+  <div id="meBoard"><div class="fl-loading">⏳ กำลังโหลดงานของคุณ...</div></div>
+
+  <div style="margin-top:13px">
+    <button class="obtn" onclick="startAdhoc()">➕ เริ่มงานที่ไม่ได้อยู่ในรายการ</button>
+  </div>
+</div>
+
+<!-- ASSIGN — หน้าจ่ายงานของ LP -->
+<div class="page" id="pg-assign">
+  <div class="role-bar">
+    <span class="role-pill rp-lp">LP</span>
+    <span class="role-who" id="lpWho">หัวหน้างาน</span>
+    <button class="role-sw" onclick="openGate()">เปลี่ยน</button>
+  </div>
+
+  <div class="shdr">
+    <div><div class="shdr-title">🎯 จ่ายงาน</div>
+    <div class="shdr-sub">กดที่เคสเพื่อเลือกคน — ชื่อจะถูกเขียนกลับเข้า Porter Summary ทันที</div></div>
+  </div>
+
+  <div class="sync-bar sync-idle" id="asStat">⏳ กำลังโหลดเคส...</div>
+  <div class="frow" id="asFilterRow"></div>
+  <div id="asList"></div>
+
+  <button class="bbtn b-new" style="margin-top:10px" onclick="openNewCase()">➕ เปิดเคสใหม่จากตารางบิน</button>
 </div>
 
 <!-- QUEUE PAGE -->
@@ -547,6 +729,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 
 <!-- SUMMARY -->
 <div class="page" id="pg-sum">
+  <button class="obtn" style="margin:0 0 12px" onclick="showMain('log')">📋 ดูประวัติ trip วันนี้</button>
   <div class="shdr">
     <div><div class="shdr-title">📊 สรุปเคสวันนี้</div>
     <div class="shdr-sub" id="sumSub">จาก Porter Summary</div></div>
@@ -572,13 +755,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
   <div id="logList"><div class="empty"><div style="font-size:42px;margin-bottom:8px">📭</div><div style="font-size:14px">ยังไม่มีประวัติ</div></div></div>
 </div>
 
-<div class="bnav">
-  <button class="bn active" id="bn0" onclick="showMain('home',this)"><span class="ico">🏠</span>หน้าหลัก</button>
-  <button class="bn" id="bnT" onclick="showMain('team',this)"><span class="ico">👥</span>ทีม</button>
-  <button class="bn" id="bnQ" onclick="showMain('queue',this)"><span class="ico">🔄</span>คิว</button>
-  <button class="bn" id="bnS" onclick="showMain('sum',this)"><span class="ico">📊</span>สรุป</button>
-  <button class="bn" id="bn1" onclick="showMain('log',this)"><span class="ico">📋</span>ประวัติ</button>
-</div>
+<div class="bnav" id="bnav"></div>
 
 <script>
 // ══════════════════════════════════════════════════════════
@@ -763,6 +940,108 @@ let caseCache=null, caseCacheAt=0;  // cache case list (refresh ทุก 60 ว
 const CASE_TTL=60000;
 
 // ══════════════════════════════════════════════════════════
+// ROLE / IDENTITY — LP จ่ายงาน · Porter ทำงานของตัวเอง
+// ══════════════════════════════════════════════════════════
+// เก็บใน localStorage ของเครื่องนั้น ๆ: มือถือของ porter จำว่าเป็นใคร
+// เครื่องของ LP จำว่าเป็น LP — ไม่ต้องเลือกใหม่ทุกครั้งที่เปิดแอป
+let role   = localStorage.getItem('wcRole')  || '';     // 'lp' | 'porter' | ''
+let meId   = localStorage.getItem('wcMeId')  || '';     // รหัสพนักงาน (porter)
+let gateStep = 'role';
+
+function me(){ return STAFF.find(s=>s.id===meId)||null; }
+// ชื่ออังกฤษอย่างที่สะกดใน Porter Summary — ใช้จับคู่เคสของตัวเอง
+function meSheetName(){ return meId ? (ROMAN[meId]||'') : ''; }
+function isLP(){ return role==='lp'; }
+
+const NAV={
+  lp:[['home','🏠','หน้าหลัก'],['assign','🎯','จ่ายงาน'],['team','👥','ทีม'],
+      ['queue','🔄','คิว'],['sum','📊','สรุป']],
+  porter:[['me','🎫','งานของฉัน'],['home','🏠','ภาพรวม'],['team','👥','ทีม'],
+      ['queue','🔄','คิว'],['sum','📊','สรุป']],
+};
+function homePage(){ return isLP()?'home':'me'; }
+
+function renderNav(active){
+  const el=document.getElementById('bnav');
+  const items=NAV[isLP()?'lp':'porter'];
+  const cur=active||homePage();
+  el.innerHTML=items.map(function(it){
+    return '<button class="bn'+(it[0]===cur?' active':'')+'" data-pg="'+it[0]+'" '
+      +'onclick="showMain(\''+it[0]+'\',this)"><span class="ico">'+it[1]+'</span>'+it[2]+'</button>';
+  }).join('');
+}
+
+// ── หน้าจอเลือกบทบาท ──
+function openGate(){
+  gateStep='role';
+  document.getElementById('gateRole').style.display='block';
+  document.getElementById('gateMe').style.display='none';
+  document.getElementById('gateSub').textContent='เข้าใช้งานในฐานะ...';
+  document.getElementById('gate').classList.add('show');
+}
+function closeGate(){ document.getElementById('gate').classList.remove('show'); }
+function backToRole(){ openGate(); }
+
+function pickRole(r){
+  if(r==='lp'){
+    role='lp'; meId=''; 
+    localStorage.setItem('wcRole','lp'); localStorage.removeItem('wcMeId');
+    applyRole(); closeGate();
+    toast('👔 เข้าใช้งานในฐานะ LP','tok');
+    return;
+  }
+  // porter ต้องบอกก่อนว่าเป็นใคร ถึงจะรู้ว่างานไหนของตัวเอง
+  gateStep='me';
+  document.getElementById('gateRole').style.display='none';
+  document.getElementById('gateMe').style.display='block';
+  document.getElementById('gateSub').textContent='คุณคือใคร? (จำไว้ในเครื่องนี้)';
+  document.getElementById('gateQ').value='';
+  renderGateStaff('');
+}
+
+function renderGateStaff(q){
+  const el=document.getElementById('gateGrid');
+  const s=(q||'').trim().toLowerCase();
+  // คนที่ขึ้นเวรวันนี้ขึ้นก่อน — บนมือถือจะได้ไม่ต้องเลื่อนหา
+  const duty=new Set(dutyStaffList().map(x=>x.id));
+  const list=STAFF.filter(x=>!s||x.nick.toLowerCase().includes(s)||x.name.toLowerCase().includes(s)||x.id.includes(s))
+    .sort((a,b)=>(duty.has(b.id)-duty.has(a.id))||a.nick.localeCompare(b.nick,'th'));
+  if(!list.length){el.innerHTML='<div class="fl-none" style="grid-column:1/-1">ไม่พบพนักงาน</div>';return;}
+  el.innerHTML=list.map(x=>`<div class="sc" onclick="pickMe('${x.id}')">
+    <div class="s-av">${duty.has(x.id)?'🟢':'👷'}</div>
+    <div class="s-nick">${x.nick}</div>
+    <div class="s-id">${x.id}</div>
+    ${ROMAN[x.id]?`<div class="s-trip" style="color:var(--gray)">${ROMAN[x.id]}</div>`:''}
+  </div>`).join('');
+}
+
+function pickMe(id){
+  const s=STAFF.find(x=>x.id===id); if(!s)return;
+  role='porter'; meId=id;
+  localStorage.setItem('wcRole','porter'); localStorage.setItem('wcMeId',id);
+  applyRole(); closeGate();
+  toast('👷 สวัสดี '+s.nick,'tok');
+}
+
+// ── ใช้บทบาทกับทั้งแอป ──
+function applyRole(){
+  renderNav();
+  const m=me();
+  const hb=document.getElementById('homeRoleBar');
+  if(hb){
+    hb.style.display='flex';
+    const pill=document.getElementById('homeRolePill');
+    pill.textContent=isLP()?'LP':'PORTER';
+    pill.className='role-pill '+(isLP()?'rp-lp':'rp-po');
+    document.getElementById('homeWho').textContent=isLP()?'หัวหน้างาน':(m?m.nick+' · '+m.id:'ยังไม่ได้เลือกชื่อ');
+  }
+  const mw=document.getElementById('meWho');
+  if(mw)mw.textContent=m?(m.nick+' · '+m.id+(ROMAN[m.id]?' ('+ROMAN[m.id]+')':'')):'ยังไม่ได้เลือกชื่อ';
+  showMain(homePage());
+  paintBoard();
+}
+
+// ══════════════════════════════════════════════════════════
 // CLOCK
 // ══════════════════════════════════════════════════════════
 function tick(){
@@ -777,19 +1056,26 @@ setInterval(tick,1000);tick();
 // ══════════════════════════════════════════════════════════
 function showMain(id,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('pg-'+id).classList.add('active');
+  const pg=document.getElementById('pg-'+id);
+  if(pg)pg.classList.add('active');
   document.querySelectorAll('.bn').forEach(b=>b.classList.remove('active'));
-  if(el)el.classList.add('active');
+  // หน้าที่ไม่มีปุ่มของตัวเองใน nav (เช่น ประวัติ) ให้ปุ่มที่กดมาติดค้างไว้
+  const btn=el||document.querySelector('.bn[data-pg="'+id+'"]');
+  if(btn)btn.classList.add('active');
   if(id==='log')renderLog();
+  if(id==='me'){renderMe();loadBoard();}
+  if(id==='assign'){renderAssign();loadBoard();}
   if(id==='home'){renderBoard();loadBoard();}
   if(id==='queue')loadBoard();
   if(id==='team')loadBoard();
   if(id==='sum')loadSummary();
 }
 function go(s){
+  if(s===0){showMain(homePage());return;}
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.bn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('bn0').classList.add('active');
+  const hb=document.querySelector('.bn[data-pg="'+homePage()+'"]');
+  if(hb)hb.classList.add('active');
   const pages=['pg-home','pg-s1','pg-s2','pg-s3'];
   document.getElementById(pages[s]).classList.add('active');
   if(s===0){renderBoard();renderQueueBanner();renderLPBoard();}
@@ -991,6 +1277,7 @@ async function loadBoard(force){
     preTotal=(d.pre&&d.pre.total)||0;
     demandWin=d.demand||[];manpowerWin=d.manpower||[];nowWin=d.window||null;
     if(d.queue)queueList=d.queue;
+    adoptActive(d.active||[]);
     wcRepair={};(d.repair||[]).forEach(w=>{wcRepair[w.ctrl]=w;});
     // กะทั้งหมดที่มีคนขึ้นเวรวันนี้
     SHIFTS=[...new Set(roster.filter(x=>x.status==='DUTY').map(x=>x.shift))].sort();
@@ -1004,7 +1291,8 @@ async function loadBoard(force){
 }
 
 function paintBoard(){
-  renderNowBar();renderLPBoard();renderQueue();renderQueueBanner();renderTeam();updateStats();
+  renderNowBar();renderLPBoard();renderQueue();renderQueueBanner();renderTeam();
+  renderMe();renderAssign();updateStats();
   if(document.getElementById('pg-s2').classList.contains('active'))renderWC();
 }
 
@@ -1383,6 +1671,404 @@ async function loadCases(force){
   }
 }
 
+// ══════════════════════════════════════════════════════════
+// ASSIGN — LP จ่ายเคสให้ porter จากในแอป
+// ══════════════════════════════════════════════════════════
+let asFilter=localStorage.getItem('wcAsFilter')||'open';  // open | all | doing | done
+let asCase=null;          // เคสที่กำลังจ่าย (null = กำลังเปิดเคสใหม่)
+let asPick=[];            // ชื่อในชีทที่เลือกไว้
+let asNewFlight=null;     // ไฟลท์ที่เลือกตอนเปิดเคสใหม่
+let asBusy=false;
+
+const AS_FILTERS=[['open','⚠ ยังไม่จ่าย'],['all','ทั้งหมด'],['doing','กำลังทำ'],['done','เสร็จแล้ว']];
+
+function setAsFilter(f){
+  asFilter=f; localStorage.setItem('wcAsFilter',f); renderAssign();
+}
+function asFilterRowHTML(){
+  return AS_FILTERS.map(f=>`<button class="fc${asFilter===f[0]?' act':''}" onclick="setAsFilter('${f[0]}')">${f[1]}</button>`).join('');
+}
+
+// จำนวนเคสที่คนหนึ่งถืออยู่วันนี้ — ใช้เรียงว่าใครควรได้งานต่อไป
+// นับจากเคสในชีทตรง ๆ เพื่อให้ตรงกับที่ LP เห็น (รวมเคสที่จบแล้ว)
+function loadByName(){
+  const m={};
+  todayCases.forEach(c=>{
+    if(caseCancelled(c))return;
+    (c.porters||[]).forEach(p=>{
+      const k=normName(p); if(!k)return;
+      m[k]=m[k]||{name:p,total:0,open:0};
+      m[k].total++;
+      if(!caseDone(c))m[k].open++;
+    });
+  });
+  return m;
+}
+
+// คนที่เลือกจ่ายงานได้ = คนที่ขึ้นเวรวันนี้ (ตารางเวร + STAFF RECORD)
+// เรียงเคสน้อยสุดขึ้นก่อน เหมือนกติกาคิว
+function assignableStaff(){
+  const load=loadByName();
+  const busy=new Set(Object.values(trips).map(t=>String(t.sid)));
+  const seen={};
+  const out=[];
+  const push=(sheetName,staff,shift)=>{
+    const key=normName(sheetName||(staff&&ROMAN[staff.id])||'');
+    if(!key||seen[key])return;
+    seen[key]=true;
+    const l=load[key]||{total:0,open:0};
+    out.push({
+      key, sheetName:sheetName||(staff?ROMAN[staff.id]:'')||'',
+      nick:staff?staff.nick:sheetName, id:staff?staff.id:'',
+      shift:shift||'', total:l.total, open:l.open,
+      busy:staff?busy.has(String(staff.id)):false,
+    });
+  };
+  // 1) ตารางเวรจริงจาก PRE-WHEELCHAIR
+  roster.filter(r=>r.status==='DUTY').forEach(r=>push(r.name,staffByName(r.name),r.shift));
+  // 2) STAFF RECORD ในชีทวันนี้ (เผื่อตารางเวรไม่ครบ)
+  dutyStaff.filter(s=>s.onDuty).forEach(s=>push(s.name,staffByName(s.name),s.sked));
+  // 3) คนที่มีชื่อในเคสอยู่แล้วแต่ไม่อยู่ในสองรายการบน
+  Object.values(load).forEach(l=>push(l.name,staffByName(l.name),''));
+  return out.sort((a,b)=>a.open-b.open||a.total-b.total||a.nick.localeCompare(b.nick,'th'));
+}
+
+function renderAssign(){
+  const el=document.getElementById('asList'); if(!el)return;
+  document.getElementById('asFilterRow').innerHTML=asFilterRowHTML();
+
+  const st=document.getElementById('asStat');
+  const open=todayCases.filter(c=>!c.assigned&&!caseDone(c)&&!caseCancelled(c));
+  if(st){
+    if(!todayCases.length){st.className='sync-bar sync-idle';st.textContent='ยังไม่มีเคสในชีทวันนี้';}
+    else if(open.length){st.className='sync-bar sync-err';st.textContent='⚠ ยังไม่ได้จ่าย '+open.length+' เคส · ทั้งหมด '+todayCases.length+' เคส';}
+    else{st.className='sync-bar sync-ok';st.textContent='✅ จ่ายครบทุกเคสแล้ว ('+todayCases.length+' เคส)';}
+  }
+
+  let list=todayCases.slice();
+  if(asFilter==='open') list=list.filter(c=>!c.assigned&&!caseDone(c)&&!caseCancelled(c));
+  else if(asFilter==='doing') list=list.filter(caseDoing);
+  else if(asFilter==='done') list=list.filter(caseDone);
+
+  if(!list.length){
+    el.innerHTML='<div class="empty" style="padding:24px"><div style="font-size:34px;margin-bottom:6px">'
+      +(asFilter==='open'?'🎉':'📭')+'</div><div style="font-size:13px">'
+      +(asFilter==='open'?'จ่ายงานครบทุกเคสแล้ว':'ไม่มีเคสในหมวดนี้')+'</div></div>';
+    return;
+  }
+
+  const rank=c=>caseDone(c)?3:(caseDoing(c)?2:(c.assigned?1:0));
+  list.sort((a,b)=>rank(a)-rank(b)||sortKeyTime(a)-sortKeyTime(b)||a.no-b.no);
+
+  el.innerHTML=list.map(c=>{
+    const i=todayCases.indexOf(c);
+    const done=caseDone(c),doing=caseDoing(c);
+    const cls=done?'done':(doing?'doing':(c.assigned?'set':'open'));
+    const time=c.dir==='DEP'?(c.etd?'ETD '+c.etd:''):(c.eta?'ETA '+c.eta:'');
+    const btn=done
+      ? '<button class="as-btn ghost" disabled>ส่งแล้ว ✓</button>'
+      : `<button class="as-btn${c.assigned?' ghost':''}" onclick="openAssign(${i})">${c.assigned?'เปลี่ยนคน':'จ่ายงาน'}</button>`;
+    return `<div class="as ${cls}">
+      <div class="as-top">
+        <div style="min-width:0">
+          <div class="as-flt">#${c.no} ${c.flight}${c.svc?' · '+c.svc:''}${c.dir?' · '+c.dir:''}</div>
+          <div class="as-meta">${time}${c.gate?' · Gate '+c.gate:''}${c.pickup?' · รับ '+c.pickup:''}${c.delivered?' · ส่ง '+c.delivered:''}</div>
+          <div class="as-who${c.assigned?'':' none'}">👷 ${c.porter||'— ยังไม่ได้จ่าย —'}</div>
+        </div>
+        ${btn}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── หน้าต่างเลือกคน ──
+function openAssign(i){
+  const c=todayCases[i]; if(!c)return;
+  if(caseDone(c)){toast('เคสนี้ส่งแล้ว เปลี่ยนคนไม่ได้','terr');return;}
+  asCase=c; asNewFlight=null;
+  asPick=(c.porters||[]).slice();
+  document.getElementById('asMoTitle').textContent=c.assigned?'🔁 เปลี่ยนคนทำเคส':'🎯 จ่ายงาน';
+  document.getElementById('asMoSub').textContent='#'+c.no+' · '+c.flight+(c.svc?' · '+c.svc:'');
+  const time=c.dir==='DEP'?(c.etd?'ETD '+c.etd:'—'):(c.eta?'ETA '+c.eta:'—');
+  document.getElementById('asMoInfo').innerHTML=`
+    <div class="m-row"><span class="ml">✈ เที่ยวบิน</span><span class="mv">${c.flight}${c.dir?' · '+c.dir:''}</span></div>
+    <div class="m-row"><span class="ml">⏱ เวลา</span><span class="mv">${time}</span></div>
+    ${c.gate?`<div class="m-row"><span class="ml">🚪 ประตู</span><span class="mv">${c.gate}</span></div>`:''}
+    ${c.svc?`<div class="m-row"><span class="ml">🦽 บริการ</span><span class="mv">${c.svc}</span></div>`:''}
+    <div class="m-row"><span class="ml">👷 ตอนนี้</span><span class="mv">${c.porter||'— ยังไม่ได้จ่าย —'}</span></div>`;
+  const warn=document.getElementById('asMoWarn');
+  if(caseDoing(c)){
+    warn.style.display='block';
+    warn.textContent='⚠ เคสนี้เริ่มไปแล้ว — เพิ่มคนช่วยได้ แต่เอาชื่อคนที่ทำอยู่ออกไม่ได้';
+  } else warn.style.display='none';
+  document.getElementById('asMoQ').value='';
+  renderPorterPicker('');
+  document.getElementById('asMo').classList.add('show');
+}
+
+function closeAsMo(){
+  document.getElementById('asMo').classList.remove('show');
+  asCase=null; asNewFlight=null; asPick=[];
+}
+
+function renderPorterPicker(q){
+  const el=document.getElementById('asMoList');
+  const s=(q||'').trim().toLowerCase();
+  let list=assignableStaff();
+  if(s)list=list.filter(x=>(x.nick||'').toLowerCase().includes(s)
+    ||(x.sheetName||'').toLowerCase().includes(s)||(x.id||'').includes(s));
+  // คนที่เลือกไว้แล้วขึ้นบนสุดเสมอ
+  const picked=new Set(asPick.map(normName));
+  list.sort((a,b)=>(picked.has(b.key)-picked.has(a.key)));
+  if(!list.length){
+    el.innerHTML='<div class="fl-none">ไม่พบพนักงาน — ลองรีเฟรชตารางเวร</div>';
+    return;
+  }
+  el.innerHTML=list.map(x=>{
+    const sel=picked.has(x.key);
+    return `<div class="pp${sel?' sel':''}${x.busy?' busy':''}" onclick="togglePick('${x.key}')">
+      <div class="pp-tick">${sel?'✓':''}</div>
+      <div class="pp-body">
+        <div class="pp-nm">${x.nick}${x.sheetName&&x.sheetName!==x.nick?` <span style="font-weight:400;color:var(--gray)">${x.sheetName}</span>`:''}</div>
+        <div class="pp-sub">${x.shift?'กะ '+x.shift:''}${x.busy?' · 🟡 กำลังให้บริการอยู่':''}${x.id?' · '+x.id:''}</div>
+      </div>
+      <div class="pp-load${x.open>=3?' hi':''}">${x.open}<span style="font-size:10px;color:var(--gray)">/${x.total}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function togglePick(key){
+  const all=assignableStaff();
+  const p=all.find(x=>x.key===key); if(!p)return;
+  const at=asPick.findIndex(n=>normName(n)===key);
+  if(at>=0)asPick.splice(at,1);
+  else asPick.push(p.sheetName||p.nick);
+  renderPorterPicker(document.getElementById('asMoQ').value);
+}
+
+async function saveAssign(){
+  if(asBusy)return;
+  const btn=document.getElementById('asMoOk');
+  asBusy=true; btn.disabled=true; btn.textContent='⏳ กำลังบันทึก...';
+  try{
+    const by=isLP()?'LP (แอป)':(me()?me().nick:'แอป');
+    let body;
+    if(asNewFlight){
+      body={action:'case_new',case:{
+        airline:asNewFlight.airline, fltno:asNewFlight.fltno,
+        eta:asNewFlight.sta||'', etd:asNewFlight.std||'',
+        dir:asNewFlight.type==='QT'?'':(asNewFlight.type||''),
+        porters:asPick, by:by }};
+    } else {
+      if(!asCase)throw new Error('ไม่มีเคสที่เลือก');
+      body={action:'assign',assign:{
+        caseRow:asCase.row, caseNo:asCase.no,
+        caseAirline:asCase.airline, caseFltno:asCase.fltno,
+        porters:asPick, by:by }};
+    }
+    const r=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json();
+    if(!d.ok)throw new Error(d.error||'บันทึกไม่สำเร็จ');
+
+    toast(asPick.length?('✅ จ่ายให้ '+asPick.join(', ')):'↩️ ถอนงานคืนแล้ว','tok');
+    closeAsMo();
+    await loadBoard(true);          // ดึงของจริงจากชีทกลับมา ไม่เดาเอง
+  }catch(e){
+    toast('⚠ '+e.message,'terr');
+    console.warn('assign:',e);
+  }finally{
+    asBusy=false; btn.disabled=false; btn.textContent='บันทึก ✓';
+  }
+}
+
+// ── เปิดเคสใหม่จากตารางบิน ──
+async function openNewCase(){
+  asCase=null; asNewFlight=null; asPick=[];
+  document.getElementById('asMoTitle').textContent='➕ เปิดเคสใหม่';
+  document.getElementById('asMoSub').textContent='เลือกไฟลท์ก่อน แล้วค่อยเลือกคน';
+  document.getElementById('asMoInfo').innerHTML='<div class="fl-loading">⏳ กำลังโหลดตารางบิน...</div>';
+  document.getElementById('asMoWarn').style.display='none';
+  document.getElementById('asMoList').innerHTML='';
+  document.getElementById('asMoQ').value='';
+  document.getElementById('asMo').classList.add('show');
+
+  if(!flightCache)await loadFlights();
+  const fl=flightCache||[];
+  if(!fl.length){
+    document.getElementById('asMoInfo').innerHTML='<div class="fl-none">ไม่พบตารางบินวันนี้</div>';
+    return;
+  }
+  document.getElementById('asMoInfo').innerHTML='<div class="fl-list" id="asFlList">'
+    +fl.map((f,i)=>`<div class="fl-item" onclick="pickNewFlight(${i})">
+        <div><div class="fl-code">${f.code}</div><div class="fl-route">${f.routing||''}</div></div>
+        <div style="text-align:right"><div class="fl-time">${f.sta?'A '+f.sta:''}${f.std?' D '+f.std:''}</div></div>
+      </div>`).join('')+'</div>';
+}
+
+function pickNewFlight(i){
+  const f=(flightCache||[])[i]; if(!f)return;
+  asNewFlight=f;
+  document.getElementById('asMoSub').textContent=f.code+(f.routing?' · '+f.routing:'');
+  document.getElementById('asMoInfo').innerHTML=`
+    <div class="m-row"><span class="ml">✈ เที่ยวบิน</span><span class="mv">${f.code}</span></div>
+    <div class="m-row"><span class="ml">🗺 เส้นทาง</span><span class="mv">${f.routing||'—'}</span></div>
+    <div class="m-row"><span class="ml">⏱ เวลา</span><span class="mv">${f.sta?'STA '+f.sta:''} ${f.std?'STD '+f.std:''}</span></div>
+    <div class="m-row"><span class="ml">📄 เคส</span><span class="mv">จะเขียนลงแถวว่างแถวถัดไปในชีท</span></div>`;
+  renderPorterPicker('');
+}
+
+// ══════════════════════════════════════════════════════════
+// MY JOBS — งานที่ LP จ่ายให้ porter คนนี้
+// ══════════════════════════════════════════════════════════
+// เทียบชื่อแบบเดียวกับฝั่ง server: ตัดช่องว่าง/จุด/ตัวพิมพ์ แล้วยอมให้
+// เป็นคำขึ้นต้นของกันและกัน เพราะชีทสะกดไม่นิ่ง ("A Meen" ↔ "Ameen")
+function isMine(c){
+  const want=normName(meSheetName());
+  if(!want)return false;
+  return (c.porters||[]).some(p=>{
+    const n=normName(p);
+    return n&&(n===want||n.indexOf(want)===0||want.indexOf(n)===0);
+  });
+}
+function myJobs(){ return todayCases.filter(isMine); }
+
+// เคสที่จบแล้ว / กำลังทำ — ใช้ร่วมกันทั้งหน้า "งานของฉัน" และหน้าจ่ายงาน
+function caseDone(c){ return c.state==='COMPLETED'||!!c.delivered; }
+function caseDoing(c){
+  if(caseDone(c))return false;
+  if(c.state==='ON PROCESS'||c.pickup)return true;
+  return Object.values(trips).some(t=>String(t.caseNo)===String(c.no));
+}
+function caseCancelled(c){ return c.state==='CANCELLED'; }
+
+function myShiftLabel(){
+  const m=me(); if(!m)return '—';
+  const r=roster.find(x=>{
+    const s=staffByName(x.name);
+    return s&&s.id===m.id;
+  });
+  if(!r)return '—';
+  return r.status==='DUTY'?r.shift:(r.status||'หยุด');
+}
+
+function renderMe(){
+  const el=document.getElementById('meBoard');
+  if(!el)return;
+  const m=me();
+  const who=document.getElementById('meWho');
+  if(who)who.textContent=m?(m.nick+' · '+m.id+(ROMAN[m.id]?' ('+ROMAN[m.id]+')':'')):'ยังไม่ได้เลือกชื่อ';
+  const sh=document.getElementById('meShift'); if(sh)sh.textContent=myShiftLabel();
+
+  if(!m){
+    el.innerHTML='<div class="mj-none">ยังไม่ได้เลือกว่าคุณคือใคร<br><br>'
+      +'<button class="bbtn b-new" onclick="openGate()">เลือกชื่อของฉัน</button></div>';
+    return;
+  }
+
+  // งานที่กำลังทำอยู่ของเรา (มาจาก server — รีเฟรชแล้วไม่หาย)
+  const mine=Object.values(trips).filter(t=>String(t.sid)===String(m.id));
+  const jobs=myJobs();
+  const wait=jobs.filter(c=>!caseDone(c)&&!caseDoing(c)&&!caseCancelled(c));
+  const doing=jobs.filter(caseDoing);
+  const done=jobs.filter(caseDone);
+
+  document.getElementById('meDoing').textContent=Math.max(mine.length,doing.length);
+  document.getElementById('meWait').textContent=wait.length;
+  document.getElementById('meDone').textContent=done.length;
+
+  let html='';
+
+  if(mine.length){
+    html+='<div class="sec">⏱ กำลังให้บริการอยู่</div>';
+    html+=mine.sort((a,b)=>a.startMs-b.startMs).map(t=>{
+      const min=Math.floor((Date.now()-t.startMs)/60000);
+      return `<div class="mj doing">
+        <div class="mj-top">
+          <div style="min-width:0">
+            <div class="mj-flt">${t.flight||'—'}${t.caseNo?' · #'+t.caseNo:''}</div>
+            <div class="mj-meta">🦽 ${t.ctrl}${t.caseSvc?' · '+t.caseSvc:''} · เริ่ม ${t.startTime}</div>
+          </div>
+          <div class="ac-timer" id="mt-${t.ctrl}" style="font-size:19px;color:${min>60?'var(--red)':min>40?'var(--yellow)':'var(--green)'}">${fmt(Date.now()-t.startMs)}</div>
+        </div>
+        ${min>60?'<div class="mj-meta" style="color:var(--red);font-weight:700">⚠ เกิน 60 นาทีแล้ว</div>':''}
+        <button class="bbtn b-stop mj-btn" onclick="openStop('${t.ctrl}')">🔴 จบงานนี้</button>
+      </div>`;
+    }).join('');
+  }
+
+  if(wait.length){
+    html+='<div class="sec">📋 รอเริ่มงาน ('+wait.length+')</div>';
+    html+=wait.sort((a,b)=>sortKeyTime(a)-sortKeyTime(b)).map(mjCard).join('');
+  }
+  if(doing.length&&!mine.length){
+    html+='<div class="sec">🟡 ชีทบอกว่ากำลังทำอยู่ ('+doing.length+')</div>';
+    html+=doing.map(mjCard).join('');
+  }
+  if(done.length){
+    html+='<div class="sec">✅ เสร็จแล้ววันนี้ ('+done.length+')</div>';
+    html+=done.map(mjCard).join('');
+  }
+
+  if(!html){
+    html='<div class="mj-none"><div style="font-size:38px;margin-bottom:8px">☕</div>'
+      +'ยังไม่มีเคสที่จ่ายให้คุณวันนี้<br>'
+      +'<span style="font-size:11px;color:var(--text3)">LP จ่ายงานเมื่อไหร่จะขึ้นที่นี่เอง</span></div>';
+  }
+  el.innerHTML=html;
+}
+
+// เรียงตามเวลาของไฟลท์ (ขาออกใช้ ETD · ขาเข้าใช้ ETA) — ไม่มีเวลาไปท้ายสุด
+function sortKeyTime(c){
+  const t=(c.dir==='DEP'?c.etd:c.eta)||c.eta||c.etd||'';
+  const m=/^(\d{1,2}):?(\d{2})$/.exec(String(t).trim());
+  return m?(Number(m[1])*60+Number(m[2])):9999;
+}
+
+function mjCard(c){
+  const i=todayCases.indexOf(c);
+  const done=caseDone(c),doing=caseDoing(c),cx=caseCancelled(c);
+  const cls=done?'done':(doing?'doing':'');
+  const time=c.dir==='DEP'?(c.etd?'ETD '+c.etd:''):(c.eta?'ETA '+c.eta:'');
+  const others=(c.porters||[]).filter(p=>normName(p)!==normName(meSheetName()));
+  const bd=[];
+  if(c.svc)bd.push('<span class="mj-bd ssr">'+c.svc+'</span>');
+  if(c.dir)bd.push('<span class="mj-bd '+(c.dir==='DEP'?'dep':'arr')+'">'+c.dir+'</span>');
+  if(done)bd.push('<span class="mj-bd" style="background:var(--green-lt);color:var(--green)">✓ ส่งแล้ว '+(c.delivered||'')+'</span>');
+  else if(doing)bd.push('<span class="mj-bd" style="background:var(--yellow-lt);color:var(--yellow)">กำลังทำ'+(c.pickup?' · รับ '+c.pickup:'')+'</span>');
+  else if(cx)bd.push('<span class="mj-bd" style="background:var(--red-lt);color:var(--red)">ยกเลิก</span>');
+  return `<div class="mj ${cls}">
+    <div class="mj-top">
+      <div style="min-width:0">
+        <div class="mj-flt">#${c.no} ${c.flight}</div>
+        <div class="mj-meta">${time}${c.gate?' · Gate '+c.gate:''}${c.notified?' · แจ้ง '+c.notified:''}</div>
+        <div class="mj-badges">${bd.join('')}</div>
+        ${others.length?`<div class="mj-with">🤝 ทำคู่กับ ${others.join(', ')}</div>`:''}
+        ${c.remark?`<div class="mj-meta">📝 ${c.remark}</div>`:''}
+      </div>
+    </div>
+    ${(!done&&!cx)?`<button class="bbtn b-start mj-btn" onclick="startMyJob(${i})">▶ ${doing?'รับงานต่อ':'เริ่มงานนี้'}</button>`:''}
+  </div>`;
+}
+
+// งานด่วนที่ยังไม่มีในชีท — เป็นตัวเราเสมอ เลือกรถเข็นแล้วค่อยเลือกไฟลท์
+function startAdhoc(){
+  const m=me(); if(!m){openGate();return;}
+  selS=m; selCase=null; selFlight=null; queueMode=false;
+  go(2);
+}
+
+// porter กดเริ่มงานของตัวเอง → ข้ามหน้าเลือกคน ไปเลือกรถเข็นเลย
+function startMyJob(i){
+  const c=todayCases[i]; if(!c)return;
+  const m=me(); if(!m){openGate();return;}
+  if(caseDone(c)){toast('เคสนี้ส่งเรียบร้อยแล้ว ✓','terr');return;}
+  selS=m; selCase=c;
+  selFlight={code:c.flight,airline:c.airline,fltno:c.fltno,routing:'',
+             sta:c.eta||'',std:c.etd||'',type:c.dir||''};
+  queueMode=false;
+  go(2);
+}
+
 // ── บอร์ดเคสที่ LP assign (หน้าหลัก) ──
 function renderLPBoard(){
   const el=document.getElementById('lpBoard');
@@ -1420,6 +2106,11 @@ function startFromLP(i){
   const c=todayCases[i];
   if(!c)return;
   if(c.state==='COMPLETED'||c.delivered){toast('เคสนี้จบแล้ว ✓','terr');return;}
+  // porter เริ่มได้เฉพาะเคสที่ LP จ่ายให้ตัวเอง — กันกดเคสของคนอื่นโดยไม่ตั้งใจ
+  if(!isLP()){
+    if(!isMine(c)){toast('เคสนี้ไม่ได้จ่ายให้คุณ — ดูงานของคุณที่แท็บ "งานของฉัน"','terr');return;}
+    startMyJob(i);return;
+  }
   const m=staffByName((c.porters&&c.porters[0])||c.porter);
   selCase=c;
   selFlight={code:c.flight,airline:c.airline,fltno:c.fltno,routing:'',sta:c.eta||'',std:c.etd||'',type:c.dir||''};
@@ -1505,7 +2196,7 @@ function skipCase(){
 // ══════════════════════════════════════════════════════════
 async function loadFlights(){
   const el=document.getElementById('flContent');
-  el.innerHTML='<div class="fl-loading">⏳ กำลังโหลดตารางบินวันนี้...</div>';
+  if(el)el.innerHTML='<div class="fl-loading">⏳ กำลังโหลดตารางบินวันนี้...</div>';
 
   if(flightCache){renderFlightList(flightCache);return;}
 
@@ -1526,6 +2217,7 @@ async function loadFlights(){
 
 function renderFlightList(flights){
   const el=document.getElementById('flContent');
+  if(!el)return;
   if(!flights||!flights.length){
     el.innerHTML='<div class="fl-none" onclick="skipFlight()">ไม่มีตารางบิน / ข้ามขั้นตอนนี้ →</div>';
     return;
@@ -1574,7 +2266,9 @@ function pickFlight(f){
 function skipFlight(){selFlight=null;selCase=null;document.querySelectorAll('.fl-item').forEach(el=>el.classList.remove('sel'));toast('ข้าม Flight แล้ว','');}
 
 function showFlightError(msg){
-  document.getElementById('flContent').innerHTML=
+  const el=document.getElementById('flContent');
+  if(!el)return;
+  el.innerHTML=
     `<div style="font-size:12px;color:var(--red);text-align:center;padding:10px">${msg}</div>
      <div class="fl-none" style="margin-top:8px" onclick="skipFlight()">ข้ามขั้นตอนนี้ →</div>`;
 }
@@ -1609,8 +2303,17 @@ function startService(){
     status:'active'
   };
   trips[ctrl]=trip;
-  sync('start',trip);
-  flash();toast('🟢 '+selS.nick+' · '+ctrl+(trip.flight?' ✈'+trip.flight:'')+(trip.caseNo?' 📋#'+trip.caseNo:''),'tok');
+  const who=selS.nick;
+  sync('start',trip).then(res=>{
+    // server ปฏิเสธ (มีคนเริ่มไปแล้วจากอีกเครื่อง) → เอา trip ออกจากหน้าจอนี้
+    if(res&&!res.ok&&!res.offline){
+      delete trips[ctrl];
+      toast('⚠ '+res.error,'terr');
+      updateStats();renderBoard();renderMe();
+    }
+    loadBoard(true);
+  });
+  flash();toast('🟢 '+who+' · '+ctrl+(trip.flight?' ✈'+trip.flight:'')+(trip.caseNo?' 📋#'+trip.caseNo:''),'tok');
   // อัปเดตคิวฝั่งเครื่องนี้ทันที (server อัปเดตผ่าน handleStart อยู่แล้ว)
   const qe=queueList.find(q=>q.sid===trip.sid);
   if(qe){qe.status='กำลังบริการ';qe.trips=(qe.trips||0)+1;}
@@ -1618,7 +2321,6 @@ function startService(){
   selS=null;selW=null;selFlight=null;selCase=null;
   caseCache=null; // ให้โหลดเคสใหม่รอบหน้า (สถานะรับเคสเปลี่ยนแล้ว)
   updateStats();go(0);
-  setTimeout(()=>loadBoard(true),2500);
 }
 
 function openStop(ctrl){
@@ -1652,8 +2354,51 @@ function confirmStop(){
   const qe2=queueList.find(q=>q.sid===t.sid);
   if(qe2){qe2.status='ว่าง';qe2.order=queueList.reduce((m,q)=>Math.max(m,q.order||0),0)+1;}
   flash();toast('🔴 จบแล้ว · '+t.snick+' · '+t.duration+' น.','tok');
-  updateStats();renderBoard();renderQueueBanner();renderLPBoard();
+  updateStats();renderBoard();renderMe();renderQueueBanner();renderLPBoard();
   setTimeout(()=>loadBoard(true),2500);
+}
+
+// ══════════════════════════════════════════════════════════
+// ACTIVE TRIPS — กู้งานที่ค้างอยู่จาก server
+// ══════════════════════════════════════════════════════════
+// TripLog คือแหล่งความจริง: รีเฟรชหน้าจอ เปลี่ยนเครื่อง หรือมือถือดับไป
+// งานที่ยังไม่กดจบก็ยังอยู่ และกดจบจากเครื่องไหนก็ได้
+function adoptActive(list){
+  const seen={};
+  (list||[]).forEach(a=>{
+    if(!a.ctrl)return;
+    seen[a.ctrl]=true;
+    const cur=trips[a.ctrl];
+    if(cur&&cur.id===a.id)return;                 // ของเครื่องนี้เองอยู่แล้ว
+    trips[a.ctrl]={
+      id:a.id, ctrl:a.ctrl, no:(a.ctrl||'').replace('AOTGA-',''), type:a.type||'',
+      sid:a.sid, snick:a.snick||a.sid, sname:a.sname||'',
+      flight:a.flight||'', flAirline:a.flAirline||'', flRouting:a.flRouting||'',
+      flSTA:a.flSTA||'', flSTD:a.flSTD||'',
+      caseRow:a.caseRow||'', caseNo:a.caseNo||'', caseSvc:a.caseSvc||'',
+      casePorter:a.casePorter||'', caseAirline:a.caseAirline||'', caseFltno:a.caseFltno||'',
+      startMs:parseStart(a.date,a.startTime),
+      startTime:a.startTime||'', status:'active', fromServer:true,
+    };
+  });
+  // งานที่ server บอกว่าจบแล้ว แต่เครื่องนี้ยังค้างอยู่ (อีกเครื่องกดจบไป)
+  Object.keys(trips).forEach(ctrl=>{
+    if(!seen[ctrl]&&trips[ctrl].fromServer)delete trips[ctrl];
+  });
+}
+
+// "20/09/2026" + "08:12:30" → epoch ms (เวลาไทย เครื่องตั้งโซนไหนก็ยึดตามเครื่อง)
+// แปลงไม่ได้ก็ถือว่าเพิ่งเริ่ม ดีกว่าโชว์ตัวจับเวลาติดลบ
+function parseStart(dateStr,timeStr){
+  const d=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(dateStr||'').trim());
+  const t=/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(String(timeStr||'').trim());
+  if(!t)return Date.now();
+  const now=new Date();
+  const y=d?Number(d[3]):now.getFullYear();
+  const mo=d?Number(d[2])-1:now.getMonth();
+  const da=d?Number(d[1]):now.getDate();
+  const ms=new Date(y,mo,da,Number(t[1]),Number(t[2]),Number(t[3]||0)).getTime();
+  return (isNaN(ms)||ms>Date.now())?Date.now():ms;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1690,8 +2435,13 @@ function renderBoard(){
 }
 function fmt(ms){const s=Math.floor(ms/1000),m=Math.floor(s/60),h=Math.floor(m/60);return h>0?h+'ช '+(m%60)+'น':m+'น '+(s%60)+'ว';}
 setInterval(()=>{
-  if(!document.getElementById('pg-home').classList.contains('active'))return;
-  Object.values(trips).forEach(t=>{const el=document.getElementById('at-'+t.ctrl);if(el)el.textContent=fmt(Date.now()-t.startMs);});
+  const home=document.getElementById('pg-home').classList.contains('active');
+  const mine=document.getElementById('pg-me').classList.contains('active');
+  if(!home&&!mine)return;
+  Object.values(trips).forEach(t=>{
+    const a=document.getElementById('at-'+t.ctrl);if(a)a.textContent=fmt(Date.now()-t.startMs);
+    const b=document.getElementById('mt-'+t.ctrl);if(b)b.textContent=fmt(Date.now()-t.startMs);
+  });
   updateStats();
 },1000);
 
@@ -1753,7 +2503,8 @@ async function sync(action,trip){
     const r=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,trip})});
     const data=await r.json();
     setSL(data.ok?'ok':'err');
-  }catch(e){setSL('err');console.warn('GAS sync:',e);}
+    return data;
+  }catch(e){setSL('err');console.warn('GAS sync:',e);return {ok:false,error:'เชื่อมต่อไม่ได้',offline:true};}
 }
 function setSL(s){
   const el=document.getElementById('syncLbl');
@@ -1768,7 +2519,11 @@ function setSL(s){
 function flash(){const el=document.getElementById('flash');el.classList.add('show');setTimeout(()=>el.classList.remove('show'),380);}
 function toast(m,c=''){const t=document.getElementById('toast');t.textContent=m;t.className='show '+c;clearTimeout(window._tt);window._tt=setTimeout(()=>t.className='',2800);}
 
+// ── เริ่มทำงาน ──
 updateStats();
+renderNav();
+if(role&&(isLP()||me())) applyRole();
+else openGate();
 loadBoard(true);
 </script>
 </body>
